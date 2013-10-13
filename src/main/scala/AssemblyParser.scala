@@ -11,30 +11,30 @@ object AssemblyParser extends RegexParsers {
   private var pos = 0
   private val labels = mutable.Map[String, Int]()
 
-  def int16 = commit("-?\\d+".r >> { s =>
+  def int16 = "-?\\d+".r >> { s =>
     val n = BigInt(s)
     if (-(1 << 15) <= n && n < (1 << 15))
       success(n.toInt)
     else
       failure("immediate value out of range: " + n.toString)
-  })
-  def uint5 = commit("\\d+".r >> { s =>
+  }
+  def uint5 = "\\d+".r >> { s =>
     val n = BigInt(s)
     if (n < 32)
       success(n.toInt)
     else
       failure("immediate value out of range: " + n.toString)
-  })
-  def label = commit("\\w+".r ^? (labels, ("missing label: " + _)))
+  }
+  def label = "\\w+".r ^? (labels, ("missing label: " + _))
   def paren[T](p:Parser[T]) = "(" ~> p <~ ")"
-  def r = "r\\d{1,2}".r >> { s =>
-    val n = s.tail.toInt
-    if (n < 32) success(n) else failure("unknown register: " + s)
+  def r = "r\\d+".r >> { s =>
+    val n = BigInt(s.tail)
+    if (n < 32) success(n.toInt) else failure("unknown register: " + s)
   }
   def r_ = r <~ ","
-  def f = "f\\d{1,2}".r >> { s =>
-    val n = s.tail.toInt
-    if (n < 32) success(n) else failure("unknown register: " + s)
+  def f = "f\\d+".r >> { s =>
+    val n = BigInt(s.tail)
+    if (n < 32) success(n.toInt) else failure("unknown register: " + s)
   }
   def f_ = f <~ ","
 
