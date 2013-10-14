@@ -1,3 +1,14 @@
+	j	main
+max:
+	blt	r4, r5, lt
+	move	r2, r4
+	jr	r31
+lt:
+	move	r2, r5
+	jr	r31
 main:
-	addi	r1, r0, 1
-	sll	r1, r1, 20
+	li	r0, 0
+	li	r4, 10
+	li	r5, 20
+	jal	max
+	ow	r2

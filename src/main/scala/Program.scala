@@ -35,6 +35,13 @@ object AssemblyParser extends RegexParsers {
   private var pos = 0
   private val labels = mutable.Map[String, Int]()
 
+  def int32 = "-?\\d+".r >> { s =>
+    val n = BigInt(s)
+    if (Int.MinValue <= n && n <= Int.MaxValue)
+      success(n.toInt)
+    else
+      failure("immediate value out of range: " + n.toString)
+  }
   def int16 = "-?\\d+".r >> { s =>
     val n = BigInt(s)
     if (-(1 << 15) <= n && n < (1 << 15))
@@ -62,7 +69,7 @@ object AssemblyParser extends RegexParsers {
   }
   def f_ = f <~ ","
 
-  val instTable = Map(
+  val instTable:Map[String, Parser[Instruction]] = Map(
     // R Format
     "sll"  -> (r_ ~ r_ ~ uint5 ^^ { case rd ~ rs ~ s => Sll(rd, rs, s) }),
     "srl"  -> (r_ ~ r_ ~ uint5 ^^ { case rd ~ rs ~ s => Srl(rd, rs, s) }),
@@ -73,7 +80,7 @@ object AssemblyParser extends RegexParsers {
     "jr"   -> (r ^^ { rs => Jr(rs) }),
     "jalr" -> (r ^^ { rs => Jalr(rs) }),
     "mul"  -> (r_ ~ r ^^ { case rs ~ rt => Mul(rs, rt) }),
-    "div"  -> (r_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => Div(rd, rs, rt) }),
+    "div"  -> (r_ ~ r ^^ { case rs ~ rt => Div(rs, rt) }),
     "add"  -> (r_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => Add(rd, rs, rt) }),
     "sub"  -> (r_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => Sub(rd, rs, rt) }),
     "and"  -> (r_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => And(rd, rs, rt) }),
@@ -106,15 +113,25 @@ object AssemblyParser extends RegexParsers {
     "sw"   -> (r_ ~ int16 ~ paren(r) ^^ { case rt ~ imm ~ rs => Sw(rt, rs, imm) }),
     // J Format
     "j"    -> (label ^^ { case a => J(a) }),
-    "jal"  -> (label ^^ { case a => Jal(a) })
+    "jal"  -> (label ^^ { case a => Jal(a) }),
+    // IO Format
+    "iw"    -> (r ^^ { case rs => Iw(rs) }),
+    "ib"    -> (r ^^ { case rs => Ib(rs) }),
+    "ih"    -> (r ^^ { case rs => Ih(rs) }),
+    "ow"    -> (r ^^ { case rs => Ow(rs) }),
+    "ob"    -> (r ^^ { case rs => Ob(rs) }),
+    "oh"    -> (r ^^ { case rs => Oh(rs) })
   )
 
-  val at = 1 // temporaty regiser for psuedo instructions
-  val pseudoInstTable = Map(
-    "blt" -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Array(Slt(at, rt, rs), Bgtz(at, a - pos - 2)) })),
-    "ble" -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Array(Sub(at, rt, rs), Blez(at, a - pos - 2)) })),
-    "bgt" -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Array(Slt(at, rs, rt), Bgtz(at, a - pos - 2)) })),
-    "bge" -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Array(Sub(at, rt, rs), Bgez(at, a - pos - 2)) }))
+  val zero = 0 // zero register
+  val at = 1   // temporaty regiser for psuedo instructions
+  val pseudoInstTable:Map[String, (Int, Parser[Array[Instruction]])] = Map(
+    "li"   -> ((2, r_ ~ int32 ^^ { case rt ~ imm => Array(Lui(rt, imm >>> 16), Ori(rt, rt, (imm << 16) >>> 16)) })),
+    "move" -> ((1, r_ ~ r ^^ { case rt ~ rs => Array(Add(rt, rs, zero)) })),
+    "blt"  -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Array(Slt(at, rt, rs), Bgtz(at, a - pos - 2)) })),
+    "ble"  -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Array(Sub(at, rt, rs), Blez(at, a - pos - 2)) })),
+    "bgt"  -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Array(Slt(at, rs, rt), Bgtz(at, a - pos - 2)) })),
+    "bge"  -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Array(Sub(at, rt, rs), Bgez(at, a - pos - 2)) }))
   )
 
   def parse(source:Source):Program = {

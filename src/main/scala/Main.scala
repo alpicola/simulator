@@ -4,10 +4,11 @@ import Instruction._
 import Program._
 
 object Main {
-  def main(args:Array[String]) = {
+  def main(args:Array[String]) {
     if (args.nonEmpty) {
       val program = Program.fromAssembly(args)
-      println(program.instructions.toList)
+      val simulator = new Simulator(program)
+      simulator.run
     } else {
       println("usage: simulator foo.s")
     }

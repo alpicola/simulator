@@ -25,6 +25,10 @@ object Instruction {
     def getBytes = intToBytes(op << 26 | addr)
   }
 
+  trait IO extends R {
+    override val op = 30
+  }
+
   // R format
 
   case class Sll(rd:Reg, rs:Reg, shamt:Int) extends Instruction with R { val rt = 0; val funct = 0 }
@@ -41,8 +45,8 @@ object Instruction {
   case class Mtlo(rs:Reg) extends Instruction with R { val rt = 0; val rd = 0; val shamt = 0; val funct = 19 }
   case class Mul(rs:Reg, rt:Reg) extends Instruction with R  { val rd = 0; val shamt = 0; val funct = 24 }
   case class Mulu(rs:Reg, rt:Reg) extends Instruction with R { val rd = 0; val shamt = 0; val funct = 25 }
-  case class Div(rd:Reg, rs:Reg, rt:Reg) extends Instruction with R  { val shamt = 0; val funct = 26 }
-  case class Divu(rd:Reg, rs:Reg, rt:Reg) extends Instruction with R { val shamt = 0; val funct = 27 }
+  case class Div(rs:Reg, rt:Reg) extends Instruction with R  { val rd = 0; val shamt = 0; val funct = 26 }
+  case class Divu(rs:Reg, rt:Reg) extends Instruction with R { val rd = 0; val shamt = 0; val funct = 27 }
   case class Add(rd:Reg, rs:Reg, rt:Reg) extends Instruction with R  { val shamt = 0; val funct = 32 }
   case class Addu(rd:Reg, rs:Reg, rt:Reg) extends Instruction with R { val shamt = 0; val funct = 33 }
   case class Sub(rd:Reg, rs:Reg, rt:Reg) extends Instruction with R  { val shamt = 0; val funct = 34 }
@@ -85,6 +89,15 @@ object Instruction {
 
   case class J(addr:Int) extends Instruction with J_   { val op = 2 }
   case class Jal(addr:Int) extends Instruction with J_ { val op = 3 }
+
+  // IO format
+
+  case class Iw(rs:Reg) extends Instruction with IO { val rt = 0; val rd = 0; val shamt = 0; val funct = 3 }
+  case class Ib(rs:Reg) extends Instruction with IO { val rt = 0; val rd = 0; val shamt = 0; val funct = 4 }
+  case class Ih(rs:Reg) extends Instruction with IO { val rt = 0; val rd = 0; val shamt = 0; val funct = 6 }
+  case class Ow(rs:Reg) extends Instruction with IO { val rt = 0; val rd = 0; val shamt = 0; val funct = 11 }
+  case class Ob(rs:Reg) extends Instruction with IO { val rt = 0; val rd = 0; val shamt = 0; val funct = 12 }
+  case class Oh(rs:Reg) extends Instruction with IO { val rt = 0; val rd = 0; val shamt = 0; val funct = 13 }
 
   def intToBytes(n:Int):Array[Byte] =
     (0 to 3).view.map { i => (0xff & n >>> (24 -  i * 8)).toByte }.toArray
