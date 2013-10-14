@@ -100,7 +100,7 @@ object Instruction {
   case class Oh(rs:Reg) extends Instruction with IO { val rt = 0; val rd = 0; val shamt = 0; val funct = 13 }
 
   def intToBytes(n:Int):Array[Byte] =
-    (0 to 3).view.map { i => (0xff & n >>> (24 -  i * 8)).toByte }.toArray
+    (0 to 3).view.map(i => (0xff & n >>> (24 -  i * 8)).toByte).toArray
 }
 
 sealed abstract class Instruction {

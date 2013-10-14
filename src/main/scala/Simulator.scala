@@ -4,20 +4,20 @@ import Instruction._
 import Program._
 
 class Simulator(val program:Program) {
-  val instructions = program.instructions
+  private[this] val instructions = program.instructions
 
   // registers
-  var pc = 0
-  var hi = 0
-  var lo = 0
-  val r = new Array[Int](32)
-  val f = new Array[Float](32)
+  private[this] var pc = 0
+  private[this] var hi = 0
+  private[this] var lo = 0
+  private[this] val r = new Array[Int](32)
+  private[this] val f = new Array[Float](32)
 
   // register for return address
-  val ra = 31
+  private[this] val ra = 31
 
   // memory
-  val ram = new Array[Int](1024 * 1024)
+  private[this] val ram = new Array[Int](1024 * 1024)
 
   def run() {
     pc = 0
@@ -42,7 +42,7 @@ class Simulator(val program:Program) {
       case Mthi(rs) => hi = r(rs)
       case Mflo(rd) => r(rd) = lo
       case Mtlo(rs) => lo = r(rs)
-      case Mul(rs, rt) => val m = r(rs).toLong * r(rt).toLong
+      case Mul(rs, rt) => val m = r(rs).toLong * r(rt)
                           hi = (m >> 32).toInt; lo = (0xffff & m).toInt
       case Div(rs, rt) => hi = r(rs) / r(rt); lo = r(rs) % r(rt)
       case Add(rd, rs, rt) => r(rd) = r(rs) + r(rt)
