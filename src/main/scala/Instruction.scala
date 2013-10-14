@@ -105,10 +105,10 @@ object Instruction {
 
 sealed abstract class Instruction {
   val op:Int
-  def getBytes:Array[Byte]
-  def getName:String = {
+  val getName:String = {
     val className = getClass.getName
     val i = className.lastIndexOf("$")
     className.substring(i+1).toLowerCase
   }
+  def getBytes:Array[Byte]
 }

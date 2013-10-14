@@ -19,7 +19,7 @@ object Program {
     }
   }
 
-  def fromAssembly(files:Array[String]):Program = {
+  def fromAssembly(files:Seq[String]):Program = {
     val in = new SequenceInputStream(files.iterator.map(new FileInputStream(_)))
     try {
       AssemblyParser.parse(in)

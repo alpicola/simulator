@@ -21,6 +21,13 @@ class Simulator(val program:Program) {
 
   def run() {
     pc = 0
+    hi = 0
+    lo = 0
+    (0 to 31).foreach { i =>
+      r(i) = 0
+      f(i) = 0
+    }
+
     while (pc != instructions.length) {
       execute(instructions(pc))
     }
