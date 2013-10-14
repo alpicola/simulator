@@ -74,6 +74,8 @@ class Simulator(val program:Program) {
       case Jal(addr) => r(ra) = pc; pc = addr
       // IO Format
       case Ow(rs) => println(r(rs))
+      
+      case _ => sys.error("not yet implemented op: " + instruction.getName)
     }
   }
 
