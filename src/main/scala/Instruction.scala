@@ -17,7 +17,7 @@ object Instruction {
     val rs:Reg
     val rt:Reg
     val imm:Int
-    def getBytes = intToBytes(op << 26 | rs << 21 | rt << 16 | imm)
+    def getBytes = intToBytes(op << 26 | rs << 21 | rt << 16 | (imm & 0xffff))
   }
 
   trait J_ extends Instruction {
@@ -86,14 +86,8 @@ object Instruction {
   case class J(addr:Int) extends Instruction with J_   { val op = 2 }
   case class Jal(addr:Int) extends Instruction with J_ { val op = 3 }
 
-  def intToBytes(n:Int):Array[Byte] = {
-    val bytes = new Array[Byte](4)
-    bytes(0) = (0xff & n >>> 24).toByte
-    bytes(1) = (0xff & n >>> 16).toByte
-    bytes(2) = (0xff & n >>> 8).toByte
-    bytes(3) = (0xff & n).toByte
-    bytes
-  }
+  def intToBytes(n:Int):Array[Byte] =
+    (0 to 3).view.map { i => (0xff & n >>> (24 -  i * 8)).toByte }.toArray
 }
 
 sealed abstract class Instruction {
