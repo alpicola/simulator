@@ -1,16 +1,48 @@
 package cpuex4
 
+import java.io._
+
 import Instruction._
 import Program._
+import Settings._
 
 object Main {
+  val usageText = "usage: simulator foo.s"
+
   def main(args:Array[String]) {
-    if (args.nonEmpty) {
-      val program = Program.fromAssembly(args)
-      val simulator = new Simulator(program)
-      simulator.run
+    val (settings, parsedArgs) = parseArgs(args.toList)
+
+    if (parsedArgs.nonEmpty) {
+      val program = Program.fromAssembly(parsedArgs)
+      if (settings.assemble) {
+        val dest = parsedArgs.last.replaceFirst("\\.[^\\.]*$", "")
+        val out = new DataOutputStream(new FileOutputStream(dest))
+        try {
+          program.instructions.foreach { instruction =>
+            out.writeInt(instruction.toInt)
+          }
+        } finally {
+          out.close
+        }
+      } else {
+        val simulator = new Simulator(program, settings)
+        simulator.run
+      }
     } else {
-      println("usage: simulator foo.s")
+      println(usageText)
     }
+  }
+
+  def parseArgs(args:List[String]):(Settings, List[String]) = {
+    def iter(settings:Settings, args:List[String]):(Settings, List[String]) = {
+      args match {
+        case "-a" :: rest => iter(settings.copy(assemble = true), rest)
+        case "-b" :: rest => iter(settings.copy(binMode = true), rest)
+        case "-s" :: rest => iter(settings.copy(keepStats = true), rest)
+        case _ => (settings, args)
+      }
+    }
+
+    iter(defaultSettings, args)
   }
 }

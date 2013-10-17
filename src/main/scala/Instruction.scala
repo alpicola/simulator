@@ -10,23 +10,29 @@ object Instruction {
     val rd:Reg
     val shamt:Int
     val funct:Int
-    def getBytes = intToBytes(op << 26 | rs << 21 | rt << 16 | rd << 11 | shamt << 6 | funct)
+    def toInt = op << 26 | rs << 21 | rt << 16 | rd << 11 | shamt << 6 | funct
   }
 
   trait I extends Instruction {
     val rs:Reg
     val rt:Reg
     val imm:Int
-    def getBytes = intToBytes(op << 26 | rs << 21 | rt << 16 | (imm & 0xffff))
+    def toInt = op << 26 | rs << 21 | rt << 16 | imm & 0xffff
   }
 
   trait J_ extends Instruction {
     val addr:Int
-    def getBytes = intToBytes(op << 26 | addr)
+    def toInt = op << 26 | addr
+  }
+
+  trait F extends R {
+    override val op = 17
+    val shamt = 0
   }
 
   trait IO extends R {
     override val op = 30
+    val shamt = 0
   }
 
   // R format
@@ -90,25 +96,38 @@ object Instruction {
   case class J(addr:Int) extends Instruction with J_   { val op = 2 }
   case class Jal(addr:Int) extends Instruction with J_ { val op = 3 }
 
+  // F format
+
+  // case class Fadd(rd:Reg, rs:Reg, rt:Reg) extends Instruction with R { val funct = 0 }
+  // case class Fsub(rd:Reg, rs:Reg, rt:Reg) extends Instruction with R { val funct = 1 }
+  // case class Fmul(rd:Reg, rs:Reg, rt:Reg) extends Instruction with R { val funct = 2 }
+  // case class Fdiv(rd:Reg, rs:Reg, rt:Reg) extends Instruction with R { val funct = 3 }
+  // case class Fabs(rd:Reg, rs:Reg) extends Instruction with R  { val rt = 0; val funct = 5 }
+  // case class Fneg(rd:Reg, rs:Reg) extends Instruction with R  { val rt = 0; val funct = 7 }
+  // case class Finv(rd:Reg, rs:Reg) extends Instruction with R  { val rt = 0; val funct = 8 }
+  // case class Fsqrt(rd:Reg, rs:Reg) extends Instruction with R { val rt = 0; val funct = 9 }
+  // case class Fcseq(rd:Reg, rs:Reg, rt:Reg) extends Instruction with R { val funct = 50 }
+  // case class Fclt(rd:Reg, rs:Reg, rt:Reg) extends Instruction with R  { val funct = 52 }
+  // case class Fcle(rd:Reg, rs:Reg, rt:Reg) extends Instruction with R  { val funct = 54 }
+
   // IO format
 
-  case class Iw(rs:Reg) extends Instruction with IO { val rt = 0; val rd = 0; val shamt = 0; val funct = 3 }
-  case class Ib(rs:Reg) extends Instruction with IO { val rt = 0; val rd = 0; val shamt = 0; val funct = 4 }
-  case class Ih(rs:Reg) extends Instruction with IO { val rt = 0; val rd = 0; val shamt = 0; val funct = 6 }
-  case class Ow(rs:Reg) extends Instruction with IO { val rt = 0; val rd = 0; val shamt = 0; val funct = 11 }
-  case class Ob(rs:Reg) extends Instruction with IO { val rt = 0; val rd = 0; val shamt = 0; val funct = 12 }
-  case class Oh(rs:Reg) extends Instruction with IO { val rt = 0; val rd = 0; val shamt = 0; val funct = 13 }
-
-  def intToBytes(n:Int):Array[Byte] =
-    (0 to 3).view.map(i => (0xff & n >>> (24 -  i * 8)).toByte).toArray
+  case class Iw(rd:Reg) extends Instruction with IO { val rs = 0; val rt = 0; val funct = 3 }
+  case class Ib(rd:Reg) extends Instruction with IO { val rs = 0; val rt = 0; val funct = 4 }
+  case class Ih(rd:Reg) extends Instruction with IO { val rs = 0; val rt = 0; val funct = 6 }
+  case class Ow(rs:Reg) extends Instruction with IO { val rt = 0; val rd = 0; val funct = 11 }
+  case class Ob(rs:Reg) extends Instruction with IO { val rt = 0; val rd = 0; val funct = 12 }
+  case class Oh(rs:Reg) extends Instruction with IO { val rt = 0; val rd = 0; val funct = 13 }
+  // case class Iwf(rd:Reg) extends Instruction with IO { val rs = 0; val rt = 0; val funct = 17 } 
+  // case class Owf(rs:Reg) extends Instruction with IO { val rt = 0; val rd = 0; val funct = 25 }
 }
 
 sealed abstract class Instruction {
   val op:Int
-  val getName:String = {
+  def toInt:Int
+  def getName:String = {
     val className = getClass.getName
     val i = className.lastIndexOf("$")
     className.substring(i+1).toLowerCase
   }
-  def getBytes:Array[Byte]
 }

@@ -1,11 +1,10 @@
 	j	main
 fib:
-	addi	r8, r4, -1
-	blez	r8, le
+	addi	r4, r4, -1
+	blez	r4, le
 	addi	r29, r29, -24
 	sw	r18, 16(r29)
 	sw	r31, 20(r29)
-	addi	r4, r4, -1
 	move	r18, r4
 	jal	fib
 	move	r8, r2
@@ -18,12 +17,12 @@ fib:
 	addi	r29, r29, 24
 	jr	r31
 le:
-	move	r2, r4
+	lli	r2, 1
 	jr	r31
 main:
 	addi	r29, r0, 1
 	sll	r29, r29, 20
 	move	r30, r29
-	li	r4, 30
+	lli	r4, 30
 	jal	fib
 	ow	r2

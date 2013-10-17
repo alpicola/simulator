@@ -29,7 +29,7 @@ object Program {
   }
 }
 
-case class Program(instructions:Array[Instruction], labels:Map[Int, String])
+case class Program(instructions:Array[Instruction], labels:Map[String, Int])
 
 object AssemblyParser extends RegexParsers {
   private var pos = 0
@@ -70,7 +70,7 @@ object AssemblyParser extends RegexParsers {
   def f_ = f <~ ","
 
   val instTable:Map[String, Parser[Instruction]] = Map(
-    // R Format
+    // R format
     "sll"  -> (r_ ~ r_ ~ uint5 ^^ { case rd ~ rs ~ s => Sll(rd, rs, s) }),
     "srl"  -> (r_ ~ r_ ~ uint5 ^^ { case rd ~ rs ~ s => Srl(rd, rs, s) }),
     "sra"  -> (r_ ~ r_ ~ uint5 ^^ { case rd ~ rs ~ s => Sra(rd, rs, s) }),
@@ -88,7 +88,7 @@ object AssemblyParser extends RegexParsers {
     "xor"  -> (r_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => Xor(rd, rs, rt) }),
     "nor"  -> (r_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => Nor(rd, rs, rt) }),
     "slt"  -> (r_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => Slt(rd, rs, rt) }),
-    // I Format
+    // I format
     "beq"  -> (r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Beq(rt, rs, a - pos - 1) }),
     "bne"  -> (r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Bne(rt, rs, a - pos - 1) }),
     "bltz" -> (r_ ~ label ^^ { case rs ~ a => Bltz(rs, a - pos - 1) }),
@@ -111,13 +111,13 @@ object AssemblyParser extends RegexParsers {
     "sb"   -> (r_ ~ int16 ~ paren(r) ^^ { case rt ~ imm ~ rs => Sb(rt, rs, imm) }),
     "sh"   -> (r_ ~ int16 ~ paren(r) ^^ { case rt ~ imm ~ rs => Sh(rt, rs, imm) }),
     "sw"   -> (r_ ~ int16 ~ paren(r) ^^ { case rt ~ imm ~ rs => Sw(rt, rs, imm) }),
-    // J Format
+    // J format
     "j"    -> (label ^^ { case a => J(a) }),
     "jal"  -> (label ^^ { case a => Jal(a) }),
-    // IO Format
-    "iw"    -> (r ^^ { case rs => Iw(rs) }),
-    "ib"    -> (r ^^ { case rs => Ib(rs) }),
-    "ih"    -> (r ^^ { case rs => Ih(rs) }),
+    // IO format
+    "iw"    -> (r ^^ { case rd => Iw(rd) }),
+    "ib"    -> (r ^^ { case rd => Ib(rd) }),
+    "ih"    -> (r ^^ { case rd => Ih(rd) }),
     "ow"    -> (r ^^ { case rs => Ow(rs) }),
     "ob"    -> (r ^^ { case rs => Ob(rs) }),
     "oh"    -> (r ^^ { case rs => Oh(rs) })
@@ -126,7 +126,8 @@ object AssemblyParser extends RegexParsers {
   val zero = 0 // zero register
   val at = 1   // temporaty regiser for psuedo instructions
   val pseudoInstTable:Map[String, (Int, Parser[Array[Instruction]])] = Map(
-    "li"   -> ((2, r_ ~ int32 ^^ { case rt ~ imm => Array(Lui(rt, imm >>> 16), Ori(rt, rt, (imm << 16) >>> 16)) })),
+    "li"   -> ((2, r_ ~ int32 ^^ { case rt ~ imm => Array(Lui(rt, imm >> 16), Ori(rt, rt, imm & 0xffff)) })),
+    "lli"  -> ((1, r_ ~ int16 ^^ { case rt ~ imm => Array(Ori(rt, zero, imm)) })),
     "move" -> ((1, r_ ~ r ^^ { case rt ~ rs => Array(Add(rt, rs, zero)) })),
     "blt"  -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Array(Slt(at, rt, rs), Bgtz(at, a - pos - 2)) })),
     "ble"  -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Array(Sub(at, rt, rs), Blez(at, a - pos - 2)) })),
@@ -171,7 +172,7 @@ object AssemblyParser extends RegexParsers {
       }
     }
 
-    Program(instructions, labels.iterator.map(_.swap).toMap)
+    Program(instructions, labels.toMap)
   }
 
   def parse(in:InputStream):Program = parse(Source.fromInputStream(in))
