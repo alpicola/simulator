@@ -51,6 +51,8 @@ class Simulator(val program:Program, val settings:Settings) {
   def run() {
     reset()
 
+    val instructions = program.instructions
+
     if (keepStats) {
       val start = System.currentTimeMillis()
       while (pc != instructions.length) {
@@ -161,7 +163,7 @@ class Simulator(val program:Program, val settings:Settings) {
     val decending = Ordering[Int].reverse
     val table1 = instStats.toSeq.sortBy(_._2)(decending)
     val table2 = labels.mapValues(i => callStats(i)).toSeq.sortBy(_._2)(decending)
-    val issued = table1.view.map(_._2).sum
+    val issued = table1.iterator.map(_._2).foldLeft(0L)(_ + _)
 
     err.println("1. General")
     err.println("total time\t" + elapsed.toString + " ms")
