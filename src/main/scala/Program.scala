@@ -114,13 +114,14 @@ object AssemblyParser extends RegexParsers {
     // J format
     "j"    -> (label ^^ { case a => J(a) }),
     "jal"  -> (label ^^ { case a => Jal(a) }),
+    "halt" -> success(Halt(pos)),
     // IO format
-    "iw"    -> (r ^^ { case rd => Iw(rd) }),
-    "ib"    -> (r ^^ { case rd => Ib(rd) }),
-    "ih"    -> (r ^^ { case rd => Ih(rd) }),
-    "ow"    -> (r ^^ { case rs => Ow(rs) }),
-    "ob"    -> (r ^^ { case rs => Ob(rs) }),
-    "oh"    -> (r ^^ { case rs => Oh(rs) })
+    "iw"   -> (r ^^ { case rd => Iw(rd) }),
+    "ib"   -> (r ^^ { case rd => Ib(rd) }),
+    "ih"   -> (r ^^ { case rd => Ih(rd) }),
+    "ow"   -> (r ^^ { case rs => Ow(rs) }),
+    "ob"   -> (r ^^ { case rs => Ob(rs) }),
+    "oh"   -> (r ^^ { case rs => Oh(rs) })
   )
 
   val zero = 0 // zero register

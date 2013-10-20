@@ -93,8 +93,9 @@ object Instruction {
 
   // J format
 
-  case class J(addr:Int) extends Instruction with J_   { val op = 2 }
-  case class Jal(addr:Int) extends Instruction with J_ { val op = 3 }
+  case class J(addr:Int) extends Instruction with J_    { val op = 2 }
+  case class Jal(addr:Int) extends Instruction with J_  { val op = 3 }
+  case class Halt(addr:Int) extends Instruction with J_ { val op = 2 }
 
   // F format
 

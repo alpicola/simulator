@@ -113,6 +113,7 @@ class Simulator(val program:Program, val settings:Settings) {
       // J format
       case J(addr) => pc = addr
       case Jal(addr) => r(ra) = pc; pc = addr; if (keepStats) callStats(pc) += 1;
+      case Halt(_) => pc = instructions.length
       // IO format
       case Iw(rs) => r(rs) = if (binMode) binIn.readInt() else scanner.nextInt()
       case Ib(rs) => r(rs) = (if (binMode) binIn.readByte() else scanner.nextByte()).toInt
