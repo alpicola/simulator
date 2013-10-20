@@ -56,7 +56,7 @@ object AssemblyParser extends RegexParsers {
     else
       failure("immediate value out of range: " + n.toString)
   }
-  def label = "\\w+".r ^? (labels, ("missing label: " + _))
+  def label = "[\\w.]+".r ^? (labels, ("missing label: " + _))
   def paren[T](p:Parser[T]) = "(" ~> p <~ ")"
   def r = "r\\d+".r >> { s =>
     val n = BigInt(s.tail)
@@ -137,7 +137,7 @@ object AssemblyParser extends RegexParsers {
 
   def parse(source:Source):Program = {
     val lines = new ArrayBuffer[(Int, String, String)]()
-    val labelPat = "\\s*(\\w+):\\s*".r
+    val labelPat = "\\s*([\\w.]+):\\s*".r
     val instPat  = "\\s*(\\w+)(.*)".r
     pos = 0
     labels.clear()
