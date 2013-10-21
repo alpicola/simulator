@@ -2,6 +2,8 @@ package cpuex4
 
 import java.io._
 
+import scala.Console
+
 import Instruction._
 import Program._
 import Settings._
@@ -25,6 +27,9 @@ object Main {
           out.close
         }
       } else {
+        settings.output.foreach { dest =>
+          Console.setOut(new FileOutputStream(dest))
+        }
         val simulator = new Simulator(program, settings)
         simulator.run
       }
@@ -39,6 +44,7 @@ object Main {
         case "-a" :: rest => iter(settings.copy(assemble = true), rest)
         case "-b" :: rest => iter(settings.copy(binMode = true), rest)
         case "-s" :: rest => iter(settings.copy(keepStats = true), rest)
+        case "-o" :: dest :: rest => iter(settings.copy(output = Some(dest)), rest)
         case _ => (settings, args)
       }
     }
