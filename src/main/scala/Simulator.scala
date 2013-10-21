@@ -2,8 +2,10 @@ package cpuex4
 
 import java.io._
 import java.util._
+import java.lang.Float
 
 import scala.collection.mutable
+import scala.math._
 
 import Instruction._
 import Program._
@@ -108,19 +110,37 @@ class Simulator(val program:Program, val settings:Settings) {
       case Lui(rt, imm) => r(rt) = imm << 16
       case Bclf(rt, imm) => if (r(rt) == 0) pc += imm
       case Bclt(rt, imm) => if (r(rt) == 1) pc += imm
+      case Imvf(ft, rs) => f(ft) = Float.intBitsToFloat(r(rs))
+      case Fmvi(rt, fs) => r(rt) = Float.floatToRawIntBits(f(fs))
       case Lw(rt, rs, imm) => r(rt) = load(r(rs) + imm)
       case Sw(rt, rs, imm) => store(r(rs) + imm, r(rt))
+      case Lwf(ft, rs, imm) => f(ft) = Float.intBitsToFloat(load(r(rs) + imm))
+      case Swf(ft, rs, imm) => store(r(rs) + imm, Float.floatToRawIntBits(f(ft)))
       // J format
       case J(addr) => pc = addr
       case Jal(addr) => r(ra) = pc; pc = addr; if (keepStats) callStats(pc) += 1;
       case Halt(_) => pc = instructions.length
+      // F format
+      case Fadd(fd, fs, ft) => f(fd) = f(fs) + f(ft)
+      case Fsub(fd, fs, ft) => f(fd) = f(fs) - f(ft)
+      case Fmul(fd, fs, ft) => f(fd) = f(fs) * f(ft)
+      case Fdiv(fd, fs, ft) => f(fd) = f(fs) / f(ft)
+      case Fabs(fd, fs) => f(fd) = abs(f(fs))
+      case Fneg(fd, fs) => f(fd) = -f(fs)
+      case Finv(fd, fs) => f(fd) = 1.0f / f(fs)
+      case Fsqrt(fd, fs) => f(fd) = sqrt(f(fs).toDouble).toFloat
+      case Fcseq(rd, fs, ft) => r(rd) = if (f(fs) == f(ft)) 1 else 0
+      case Fclt(rd, fs, ft) => r(rd) = if (f(fs) < f(ft)) 1 else 0
+      case Fcle(rd, fs, ft) => r(rd) = if (f(fs) <= f(ft)) 1 else 0
       // IO format
-      case Iw(rs) => r(rs) = if (binMode) binIn.readInt() else scanner.nextInt()
-      case Ib(rs) => r(rs) = (if (binMode) binIn.readByte() else scanner.nextByte()).toInt
-      case Ih(rs) => r(rs) = (if (binMode) binIn.readShort() else scanner.nextShort()).toInt
+      case Iw(rd) => r(rd) = if (binMode) binIn.readInt() else scanner.nextInt()
+      case Ib(rd) => r(rd) = (if (binMode) binIn.readByte() else scanner.nextByte()).toInt
+      case Ih(rd) => r(rd) = (if (binMode) binIn.readShort() else scanner.nextShort()).toInt
       case Ow(rs) => if (binMode) binOut.writeInt(r(rs)) else println(r(rs))
       case Ob(rs) => if (binMode) binOut.writeByte(r(rs).toByte) else println(r(rs).toByte)
       case Oh(rs) => if (binMode) binOut.writeShort(r(rs).toShort) else println(r(rs).toShort)
+      case Iwf(fd) => f(fd) = if (binMode) binIn.readFloat() else scanner.nextFloat()
+      case Owf(fs) => if (binMode) binOut.writeFloat(f(fs)) else println(f(fs))
       
       case _ => sys.error("not yet implemented op: " + instruction.getName)
     }

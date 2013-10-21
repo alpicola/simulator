@@ -82,6 +82,8 @@ object Instruction {
   case class Lui(rt:Reg, imm:Int) extends Instruction with I  { val op = 15; val rs = 0 }
   case class Bclf(rt:Reg, imm:Int) extends Instruction with I { val op = 16; val rs = 0 }
   case class Bclt(rt:Reg, imm:Int) extends Instruction with I { val op = 16; val rs = 1 }
+  case class Imvf(rt:Reg, rs:Reg) extends Instruction with I  { val op = 18; val imm = 0 }
+  case class Fmvi(rt:Reg, rs:Reg) extends Instruction with I  { val op = 19; val imm = 0 }
   case class Lb(rt:Reg, rs:Reg, imm:Int) extends Instruction with I  { val op = 32 } 
   case class Lh(rt:Reg, rs:Reg, imm:Int) extends Instruction with I  { val op = 33 }
   case class Lw(rt:Reg, rs:Reg, imm:Int) extends Instruction with I  { val op = 35 }
@@ -90,6 +92,8 @@ object Instruction {
   case class Sb(rt:Reg, rs:Reg, imm:Int) extends Instruction with I  { val op = 40 }
   case class Sh(rt:Reg, rs:Reg, imm:Int) extends Instruction with I  { val op = 41 }
   case class Sw(rt:Reg, rs:Reg, imm:Int) extends Instruction with I  { val op = 43 }
+  case class Lwf(rt:Reg, rs:Reg, imm:Int) extends Instruction with I { val op = 49 }
+  case class Swf(rt:Reg, rs:Reg, imm:Int) extends Instruction with I { val op = 56 }
 
   // J format
 
@@ -99,17 +103,17 @@ object Instruction {
 
   // F format
 
-  // case class Fadd(rd:Reg, rs:Reg, rt:Reg) extends Instruction with R { val funct = 0 }
-  // case class Fsub(rd:Reg, rs:Reg, rt:Reg) extends Instruction with R { val funct = 1 }
-  // case class Fmul(rd:Reg, rs:Reg, rt:Reg) extends Instruction with R { val funct = 2 }
-  // case class Fdiv(rd:Reg, rs:Reg, rt:Reg) extends Instruction with R { val funct = 3 }
-  // case class Fabs(rd:Reg, rs:Reg) extends Instruction with R  { val rt = 0; val funct = 5 }
-  // case class Fneg(rd:Reg, rs:Reg) extends Instruction with R  { val rt = 0; val funct = 7 }
-  // case class Finv(rd:Reg, rs:Reg) extends Instruction with R  { val rt = 0; val funct = 8 }
-  // case class Fsqrt(rd:Reg, rs:Reg) extends Instruction with R { val rt = 0; val funct = 9 }
-  // case class Fcseq(rd:Reg, rs:Reg, rt:Reg) extends Instruction with R { val funct = 50 }
-  // case class Fclt(rd:Reg, rs:Reg, rt:Reg) extends Instruction with R  { val funct = 52 }
-  // case class Fcle(rd:Reg, rs:Reg, rt:Reg) extends Instruction with R  { val funct = 54 }
+  case class Fadd(rd:Reg, rs:Reg, rt:Reg) extends Instruction with F { val funct = 0 }
+  case class Fsub(rd:Reg, rs:Reg, rt:Reg) extends Instruction with F { val funct = 1 }
+  case class Fmul(rd:Reg, rs:Reg, rt:Reg) extends Instruction with F { val funct = 2 }
+  case class Fdiv(rd:Reg, rs:Reg, rt:Reg) extends Instruction with F { val funct = 3 }
+  case class Fabs(rd:Reg, rs:Reg) extends Instruction with F  { val rt = 0; val funct = 5 }
+  case class Fneg(rd:Reg, rs:Reg) extends Instruction with F  { val rt = 0; val funct = 7 }
+  case class Finv(rd:Reg, rs:Reg) extends Instruction with F  { val rt = 0; val funct = 8 }
+  case class Fsqrt(rd:Reg, rs:Reg) extends Instruction with F { val rt = 0; val funct = 9 }
+  case class Fcseq(rd:Reg, rs:Reg, rt:Reg) extends Instruction with F { val funct = 50 }
+  case class Fclt(rd:Reg, rs:Reg, rt:Reg) extends Instruction with F  { val funct = 52 }
+  case class Fcle(rd:Reg, rs:Reg, rt:Reg) extends Instruction with F  { val funct = 54 }
 
   // IO format
 
@@ -119,8 +123,8 @@ object Instruction {
   case class Ow(rs:Reg) extends Instruction with IO { val rt = 0; val rd = 0; val funct = 11 }
   case class Ob(rs:Reg) extends Instruction with IO { val rt = 0; val rd = 0; val funct = 12 }
   case class Oh(rs:Reg) extends Instruction with IO { val rt = 0; val rd = 0; val funct = 13 }
-  // case class Iwf(rd:Reg) extends Instruction with IO { val rs = 0; val rt = 0; val funct = 17 } 
-  // case class Owf(rs:Reg) extends Instruction with IO { val rt = 0; val rd = 0; val funct = 25 }
+  case class Iwf(rd:Reg) extends Instruction with IO { val rs = 0; val rt = 0; val funct = 17 } 
+  case class Owf(rs:Reg) extends Instruction with IO { val rt = 0; val rd = 0; val funct = 25 }
 }
 
 sealed abstract class Instruction {
