@@ -1,6 +1,6 @@
 	j	_min_caml_start
 fib.10:
-	lli	r3, 1
+	li	r3, 1
 	bgt	r2, r3, ble_else.24
 	jr	r31
 ble_else.24:
@@ -28,7 +28,7 @@ _min_caml_start: # main entry point
 	addi	r29, r0, 1
 	sll	r29, r29, 20
    # main program start
-	lli	r2, 30
+	li	r2, 30
 	sw	r31, 0(r29)
 	addi	r29, r29, -4
 	jal	fib.10

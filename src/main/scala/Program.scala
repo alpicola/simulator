@@ -37,28 +37,32 @@ object AssemblyParser extends RegexParsers {
   private var pos = 0
   private val labels = mutable.Map[String, Int]()
 
-  def int32 = "-?\\d+".r >> { s =>
-    val n = BigInt(s)
+  def decimal = "-?\\d+".r ^^ { BigInt(_) }
+  def hex = "0x[0-9a-f]+".r ^^ { s =>
+      s.iterator.drop(2).map("0123456789abcdef".indexOf(_)).foldLeft(BigInt(0))(_ * 16 + _)
+  }
+  def int = hex | decimal
+  def int32 = int >> { n =>
     if (Int.MinValue <= n && n <= Int.MaxValue)
       success(n.toInt)
     else
       failure("immediate value out of range: " + n.toString)
   }
-  def int16 = "-?\\d+".r >> { s =>
-    val n = BigInt(s)
+  def int16 = int >> { n =>
     if (-(1 << 15) <= n && n < (1 << 15))
       success(n.toInt)
     else
       failure("immediate value out of range: " + n.toString)
   }
-  def uint5 = "\\d+".r >> { s =>
-    val n = BigInt(s)
-    if (n < 32)
+  def uint5 = int >> { n =>
+    if (0 <= n && n < 32)
       success(n.toInt)
     else
       failure("immediate value out of range: " + n.toString)
   }
-  def float = """-?(\d+(\.\d*)?|\d*\.\d+)([eE][+-]?\d+)?[fFdD]?""".r ^^ { _.toFloat }
+  def float = """-?(\d+(\.\d*)?|\d*\.\d+)([eE][+-]?\d+)?""".r ^^ { s =>
+    Float.floatToRawIntBits(s.toFloat)
+  }
   def label = "[\\w.]+".r ^? (labels, ("missing label: " + _))
   def paren[T](p:Parser[T]) = "(" ~> p <~ ")"
   def r = "r\\d+".r >> { s =>
@@ -154,8 +158,8 @@ object AssemblyParser extends RegexParsers {
     "ble"   -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Array(Sub(at, rt, rs), Blez(at, a - pos - 2)) })),
     "bgt"   -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Array(Slt(at, rs, rt), Bgtz(at, a - pos - 2)) })),
     "bge"   -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Array(Sub(at, rt, rs), Bgez(at, a - pos - 2)) })),
-    "li"    -> ((2, r_ ~ int32 ^^ { case rt ~ imm => Array(Lui(rt, imm >> 16), Ori(rt, rt, imm & 0xffff)) })),
-    "lli"   -> ((1, r_ ~ int16 ^^ { case rt ~ imm => Array(Ori(rt, zero, imm)) })),
+    "li"    -> ((1, r_ ~ int16 ^^ { case rt ~ imm => Array(Ori(rt, zero, imm)) })),
+    "ll"    -> ((1, r_ ~ label ^^ { case rt ~ imm => Array(Ori(rt, zero, imm)) })),
     "fmove" -> ((1, f_ ~ f ^^ { case rt ~ rs => Array(Fadd(rt, rs, zero)) })),
     "fbeq"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => Array(Fcseq(at, rt, rs), Bgtz(at, a - pos - 2)) })),
     "fbne"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => Array(Fcseq(at, rt, rs), Blez(at, a - pos - 2)) })),
@@ -163,8 +167,7 @@ object AssemblyParser extends RegexParsers {
     "fble"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => Array(Fcle(at, rt, rs), Bgtz(at, a - pos - 2)) })),
     "fbgt"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => Array(Fcle(at, rs, rt), Bgtz(at, a - pos - 2)) })),
     "fbge"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => Array(Fclt(at, rs, rt), Bgtz(at, a - pos - 2)) })),
-    "fli"   -> ((3, f_ ~ float ^^ { case rt ~ imm_ =>
-                                      val imm = Float.floatToRawIntBits(imm_)
+    "fli"   -> ((3, f_ ~ float ^^ { case rt ~ imm =>
                                       Array(Lui(at, imm >> 16), Ori(at, at, imm & 0xffff), Imvf(rt, at)) }))
   )
 

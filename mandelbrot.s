@@ -3,9 +3,9 @@ dbl.38:
 	fadd	f1, f1, f1
 	jr	r31
 iloop.54:
-	lli	r3, 0
+	li	r3, 0
 	bne	r2, r3, beq_else.117
-	lli	r2, 1
+	li	r2, 1
 	j	min_caml_print_int
 beq_else.117:
 	fsub	f3, f3, f4
@@ -35,10 +35,10 @@ beq_else.117:
 	lwf	f5, 0(r29)
 	j	iloop.54
 fble_else.118:
-	lli	r2, 0
+	li	r2, 0
 	j	min_caml_print_int
 xloop.44:
-	lli	r4, 400
+	li	r4, 400
 	bgt	r4, r2, ble_else.119
 	jr	r31
 ble_else.119:
@@ -74,7 +74,7 @@ ble_else.119:
 	fdiv	f1, f1, f2
 	fli	f2, 1.000000
 	fsub	f6, f1, f2
-	lli	r2, 1000
+	li	r2, 1000
 	fli	f1, 0.000000
 	fli	f2, 0.000000
 	fli	f3, 0.000000
@@ -90,11 +90,11 @@ ble_else.119:
 	lw	r3, -4(r29)
 	j	xloop.44
 yloop.40:
-	lli	r3, 400
+	li	r3, 400
 	bgt	r3, r2, ble_else.121
 	jr	r31
 ble_else.121:
-	lli	r3, 0
+	li	r3, 0
 	sw	r2, 0(r29)
 	move	r27, r3
 	move	r3, r2
@@ -111,7 +111,7 @@ _min_caml_start: # main entry point
 	addi	r29, r0, 1
 	sll	r29, r29, 20
    # main program start
-	lli	r2, 0
+	li	r2, 0
 	sw	r31, 0(r29)
 	addi	r29, r29, -4
 	jal	yloop.40
@@ -120,9 +120,9 @@ _min_caml_start: # main entry point
    # main program end
 	halt
 min_caml_float_of_int:
-	li	r3, 8388608
-	li	r4, 1258291200 # 0x4b000000 
-	imvf	f4, r4         # 8388608.0
+	lui	r3, 0x80   # 8388608 = 2 ^ 23
+	lui	r4, 0x4b00
+	imvf	f4, r4     # 8388608.0
 	bltz	r2, float_of_int.neg
 	bge	r2, r3, float_of_int.large
 	or	r2, r2, r4
