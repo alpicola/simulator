@@ -154,6 +154,8 @@ object AssemblyParser extends RegexParsers {
   val pseudoInstTable:Map[String, (Int, Parser[Array[Instruction]])] = Map(
     "move"  -> ((1, r_ ~ r ^^ { case rt ~ rs => Array(Add(rt, rs, zero)) })),
     "neg"   -> ((1, r_ ~ r ^^ { case rt ~ rs => Array(Sub(rt, zero, rs)) })),
+    "lwx"   -> ((2, r_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => Array(Add(at, rs, rt), Lw(rd, at, 0)) })),
+    "swx"   -> ((2, r_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => Array(Add(at, rs, rt), Sw(rd, at, 0)) })),
     "blt"   -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Array(Slt(at, rt, rs), Bgtz(at, a - pos - 2)) })),
     "ble"   -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Array(Sub(at, rt, rs), Blez(at, a - pos - 2)) })),
     "bgt"   -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Array(Slt(at, rs, rt), Bgtz(at, a - pos - 2)) })),
