@@ -136,11 +136,11 @@ class Simulator(val program:Program, val settings:Settings) {
       case Iw(rd) => r(rd) = if (binMode) binIn.readInt() else scanner.nextInt()
       case Ib(rd) => r(rd) = (if (binMode) binIn.readByte() else scanner.nextByte()).toInt
       case Ih(rd) => r(rd) = (if (binMode) binIn.readShort() else scanner.nextShort()).toInt
-      case Ow(rs) => if (binMode) binOut.writeInt(r(rs)) else print(r(rs))
-      case Ob(rs) => if (binMode) binOut.writeByte(r(rs).toByte) else print(r(rs).toByte)
-      case Oh(rs) => if (binMode) binOut.writeShort(r(rs).toShort) else print(r(rs).toShort)
+      case Ow(rs) => if (binMode) binOut.writeInt(r(rs)) else println(r(rs))
+      case Ob(rs) => if (binMode) binOut.writeByte(r(rs).toByte) else println(r(rs).toByte)
+      case Oh(rs) => if (binMode) binOut.writeShort(r(rs).toShort) else println(r(rs).toShort)
       case Iwf(fd) => f(fd) = if (binMode) binIn.readFloat() else scanner.nextFloat()
-      case Owf(fs) => if (binMode) binOut.writeFloat(f(fs)) else print(f(fs))
+      case Owf(fs) => if (binMode) binOut.writeFloat(f(fs)) else println(f(fs))
       
       case _ => sys.error("not yet implemented op: " + instruction.getName)
     }
@@ -185,8 +185,6 @@ class Simulator(val program:Program, val settings:Settings) {
     val table1 = instStats.toSeq.sortBy(_._2)(decending)
     val table2 = labels.mapValues(i => callStats(i)).toSeq.sortBy(_._2)(decending)
     val issued = table1.iterator.map(_._2).foldLeft(0L)(_ + _)
-
-    err.println
 
     err.println("1. General")
     err.println("total time\t" + elapsed.toString + " ms")
