@@ -15,7 +15,7 @@ object Main {
     val (settings, parsedArgs) = parseArgs(args.toList)
 
     if (parsedArgs.nonEmpty) {
-      val program = Program.fromAssembly(parsedArgs)
+      val program = Program.fromAssembly(parsedArgs.map(new File(_)))
       if (settings.assemble) {
         val dest = parsedArgs.last.replaceFirst("\\.[^\\.]*$", "")
         val out = new DataOutputStream(new FileOutputStream(dest))

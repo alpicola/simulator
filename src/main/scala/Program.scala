@@ -12,7 +12,7 @@ import scala.util.parsing.combinator._
 import Instruction._
 
 object Program {
-  def fromAssembly(file:String):Program = {
+  def fromAssembly(file:File):Program = {
     val in = new FileInputStream(file)
     try {
       AssemblyParser.parse(in)
@@ -21,8 +21,8 @@ object Program {
     }
   }
 
-  def fromAssembly(files:Seq[String]):Program = {
-    val in = new SequenceInputStream(files.iterator.map(new FileInputStream(_)))
+  def fromAssembly(files:Seq[File]):Program = {
+    val in = new SequenceInputStream(files.map(new FileInputStream(_)).iterator)
     try {
       AssemblyParser.parse(in)
     } finally {
@@ -156,6 +156,8 @@ object AssemblyParser extends RegexParsers {
     "neg"   -> ((1, r_ ~ r ^^ { case rt ~ rs => Array(Sub(rt, zero, rs)) })),
     "lwx"   -> ((2, r_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => Array(Add(at, rs, rt), Lw(rd, at, 0)) })),
     "swx"   -> ((2, r_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => Array(Add(at, rs, rt), Sw(rd, at, 0)) })),
+    "lwfx"  -> ((2, f_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => Array(Add(at, rs, rt), Lwf(rd, at, 0)) })),
+    "swfx"  -> ((2, f_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => Array(Add(at, rs, rt), Swf(rd, at, 0)) })),
     "blt"   -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Array(Slt(at, rt, rs), Bgtz(at, a - pos - 2)) })),
     "ble"   -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Array(Sub(at, rt, rs), Blez(at, a - pos - 2)) })),
     "bgt"   -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Array(Slt(at, rs, rt), Bgtz(at, a - pos - 2)) })),
@@ -167,8 +169,8 @@ object AssemblyParser extends RegexParsers {
     "fbne"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => Array(Fcseq(at, rt, rs), Blez(at, a - pos - 2)) })),
     "fblt"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => Array(Fclt(at, rt, rs), Bgtz(at, a - pos - 2)) })),
     "fble"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => Array(Fcle(at, rt, rs), Bgtz(at, a - pos - 2)) })),
-    "fbgt"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => Array(Fcle(at, rs, rt), Bgtz(at, a - pos - 2)) })),
-    "fbge"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => Array(Fclt(at, rs, rt), Bgtz(at, a - pos - 2)) })),
+    "fbgt"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => Array(Fcle(at, rt, rs), Blez(at, a - pos - 2)) })),
+    "fbge"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => Array(Fclt(at, rt, rs), Blez(at, a - pos - 2)) })),
     "fli"   -> ((3, f_ ~ float ^^ { case rt ~ imm =>
                                       Array(Lui(at, imm >> 16), Ori(at, at, imm & 0xffff), Imvf(rt, at)) }))
   )
