@@ -6,6 +6,7 @@ import java.lang.Float
 
 import scala.collection.mutable
 import scala.math._
+import scala.Console
 
 import Instruction._
 import Program._
@@ -32,7 +33,6 @@ class Simulator(val program:Program, val settings:Settings) {
 
   private[this] val scanner = new Scanner(System.in)
   private[this] val binIn = new DataInputStream(System.in)
-  private[this] val binOut = new DataOutputStream(System.out)
 
   private[this] var elapsed = 0L
 
@@ -86,7 +86,7 @@ class Simulator(val program:Program, val settings:Settings) {
       case Mthi(rs) => hi = r(rs)
       case Mflo(rd) => r(rd) = lo
       case Mtlo(rs) => lo = r(rs)
-      case Mul(rs, rt) => val m = r(rs).toLong * r(rt); hi = (m >> 32).toInt; lo = (0xffff & m).toInt
+      case Mul(rs, rt) => val m = r(rs).toLong * r(rt); hi = (m >> 32).toInt; lo = (0xffffffff & m).toInt
       case Div(rs, rt) => hi = r(rs) / r(rt); lo = r(rs) % r(rt)
       case Add(rd, rs, rt) => r(rd) = r(rs) + r(rt)
       case Sub(rd, rs, rt) => r(rd) = r(rs) - r(rt)
@@ -136,11 +136,11 @@ class Simulator(val program:Program, val settings:Settings) {
       case Iw(rd) => r(rd) = if (binMode) binIn.readInt() else scanner.nextInt()
       case Ib(rd) => r(rd) = (if (binMode) binIn.readByte() else scanner.nextByte()).toInt
       case Ih(rd) => r(rd) = (if (binMode) binIn.readShort() else scanner.nextShort()).toInt
-      case Ow(rs) => if (binMode) binOut.writeInt(r(rs)) else println(r(rs))
-      case Ob(rs) => if (binMode) binOut.writeByte(r(rs).toByte) else println(r(rs).toByte)
-      case Oh(rs) => if (binMode) binOut.writeShort(r(rs).toShort) else println(r(rs).toShort)
+      // case Ow(rs) => binOut.writeInt(r(rs))
+      case Ob(rs) => Console.out.write(Array(r(rs).toByte))
+      // case Oh(rs) => binOut.writeShort(r(rs).toShort)
       case Iwf(fd) => f(fd) = if (binMode) binIn.readFloat() else scanner.nextFloat()
-      case Owf(fs) => if (binMode) binOut.writeFloat(f(fs)) else println(f(fs))
+      // case Owf(fs) => binOut.writeFloat(f(fs))
       
       case _ => sys.error("not yet implemented op: " + instruction.getName)
     }
