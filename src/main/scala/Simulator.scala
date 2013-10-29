@@ -33,6 +33,7 @@ class Simulator(val program:Program, val settings:Settings) {
 
   private[this] val scanner = new Scanner(System.in)
   private[this] val binIn = new DataInputStream(System.in)
+  private[this] val buf = new Array[Byte](4)
 
   private[this] var elapsed = 0L
 
@@ -136,11 +137,13 @@ class Simulator(val program:Program, val settings:Settings) {
       case Iw(rd) => r(rd) = if (binMode) binIn.readInt() else scanner.nextInt()
       case Ib(rd) => r(rd) = (if (binMode) binIn.readByte() else scanner.nextByte()).toInt
       case Ih(rd) => r(rd) = (if (binMode) binIn.readShort() else scanner.nextShort()).toInt
-      // case Ow(rs) => binOut.writeInt(r(rs))
-      case Ob(rs) => Console.out.write(Array(r(rs).toByte))
-      // case Oh(rs) => binOut.writeShort(r(rs).toShort)
+      // case Ow(rs) =>
+      case Ob(rs) => buf(0) = r(rs).toByte; Console.out.write(buf, 0, 1)
+      // case Oh(rs) =>
       case Iwf(fd) => f(fd) = if (binMode) binIn.readFloat() else scanner.nextFloat()
-      // case Owf(fs) => binOut.writeFloat(f(fs))
+      // case Owf(fs) =>
+      case Dump(rs) => println(r(rs))
+      case Dumpf(fs) => println(f(fs))
       
       case _ => sys.error("not yet implemented op: " + instruction.getName)
     }
@@ -172,8 +175,6 @@ class Simulator(val program:Program, val settings:Settings) {
   }
 
   def reportStats() {
-    import scala.Console.err
-
     val instStats = mutable.Map[String, Int]()
 
     (0 until instructions.length).foreach { i =>
@@ -186,18 +187,18 @@ class Simulator(val program:Program, val settings:Settings) {
     val table2 = labels.mapValues(i => callStats(i)).toSeq.sortBy(_._2)(decending)
     val issued = table1.iterator.map(_._2).foldLeft(0L)(_ + _)
 
-    err.println("1. General")
-    err.println("total time\t" + elapsed.toString + " ms")
-    err.println("total issued\t" + issued.toString + " insts")
+    Console.err.println("1. General")
+    Console.err.println("total time\t" + elapsed.toString + " ms")
+    Console.err.println("total issued\t" + issued.toString + " insts")
     
-    err.println("2. Issue")
+    Console.err.println("2. Issue")
     table1.foreach { case (op, count) =>
-      err.println(op + "\t" + count.toString)
+      Console.err.println(op + "\t" + count.toString)
     }
 
-    err.println("3. Call")
+    Console.err.println("3. Call")
     table2.iterator.takeWhile(_._2 > 0).foreach { case (label, count) =>
-      err.println(label + "\t" + count.toString)
+      Console.err.println(label + "\t" + count.toString)
     }
   }
 }

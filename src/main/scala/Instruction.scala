@@ -125,6 +125,8 @@ object Instruction {
   case class Oh(rs:Reg) extends Instruction with IO { val rt = 0; val rd = 0; val funct = 13 }
   case class Iwf(rd:Reg) extends Instruction with IO { val rs = 0; val rt = 0; val funct = 17 } 
   case class Owf(rs:Reg) extends Instruction with IO { val rt = 0; val rd = 0; val funct = 25 }
+  case class Dump(rs:Reg) extends Instruction with IO  { val rt = 0; val rd = 0; val funct = 30 }
+  case class Dumpf(rs:Reg) extends Instruction with IO { val rt = 0; val rd = 0; val funct = 31 }
 }
 
 sealed abstract class Instruction {

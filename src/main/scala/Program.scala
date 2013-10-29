@@ -150,7 +150,9 @@ object AssemblyParser extends RegexParsers {
     "ob"    -> (r ^^ { case rs => Ob(rs) }),
     "oh"    -> (r ^^ { case rs => Oh(rs) }),
     "iwf"   -> (f ^^ { case rd => Iwf(rd) }),
-    "owf"   -> (f ^^ { case rs => Owf(rs) })
+    "owf"   -> (f ^^ { case rs => Owf(rs) }),
+    "dump"  -> (r ^^ { case rs => Dump(rs) }),
+    "dumpf" -> (f ^^ { case fs => Dumpf(fs) })
   )
 
   val zero = 0 // zero register
