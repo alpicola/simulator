@@ -113,10 +113,10 @@ class Simulator(val program:Program, val settings:Settings) {
       case Bclt(rt, imm) => if (r(rt) == 1) pc += imm
       case Imvf(ft, rs) => f(ft) = Float.intBitsToFloat(r(rs))
       case Fmvi(rt, fs) => r(rt) = Float.floatToRawIntBits(f(fs))
-      case Lw(rt, rs, imm) => r(rt) = load(r(rs) + imm)
-      case Sw(rt, rs, imm) => store(r(rs) + imm, r(rt))
-      case Lwf(ft, rs, imm) => f(ft) = Float.intBitsToFloat(load(r(rs) + imm))
-      case Swf(ft, rs, imm) => store(r(rs) + imm, Float.floatToRawIntBits(f(ft)))
+      case Lw(rt, rs, imm) => r(rt) = ram(r(rs) + imm)
+      case Sw(rt, rs, imm) => ram(r(rs) + imm) = r(rt)
+      case Lwf(ft, rs, imm) => f(ft) = Float.intBitsToFloat(ram(r(rs) + imm))
+      case Swf(ft, rs, imm) => ram(r(rs) + imm) = Float.floatToRawIntBits(f(ft))
       // J format
       case J(addr) => pc = addr
       case Jal(addr) => r(ra) = pc; pc = addr; if (keepStats) callStats(pc) += 1;
@@ -142,35 +142,10 @@ class Simulator(val program:Program, val settings:Settings) {
       // case Oh(rs) =>
       case Iwf(fd) => f(fd) = if (binMode) binIn.readFloat() else scanner.nextFloat()
       // case Owf(fs) =>
-      case Dump(rs) => println(r(rs))
-      case Dumpf(fs) => println(f(fs))
+      case Dump(rs) => Console.err.println(r(rs))
+      case Dumpf(fs) => Console.err.println(f(fs))
       
       case _ => sys.error("not yet implemented op: " + instruction.getName)
-    }
-  }
-
-  def load(addr:Int):Int = {
-    val i = addr >> 2
-    val j = addr & 3
-    if (j == 0) {
-      ram(i)
-    } else {
-      val shift = j << 3
-      val shift_ = 32 - j
-      ram(i) << shift | ram(i+1) >>> shift_
-    }
-  }
-
-  def store(addr:Int, n:Int) {
-    val i = addr >> 2
-    val j = addr & 3
-    if (j == 0) {
-      ram(i) = n
-    } else {
-      val shift = j << 3
-      val shift_ = 32 - j
-      ram(i) = (ram(i) >>> shift_) << shift_ | n >>> shift
-      ram(i+1) = (ram(i+1) << shift) >>> shift | n << shift_
     }
   }
 

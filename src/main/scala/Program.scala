@@ -185,6 +185,7 @@ object AssemblyParser extends RegexParsers {
     val lines = new ArrayBuffer[(Int, String, String)]()
     val labelPat = "\\s*([\\w.]+):\\s*".r
     val instPat  = "\\s*(\\w+)(.*)".r
+    val blankPat = "\\s*".r
     pos = 0
     labels.clear()
 
@@ -195,7 +196,8 @@ object AssemblyParser extends RegexParsers {
         case instPat(opcode, operands) =>
           lines += ((pos, opcode, operands))
           pos += pseudoInstTable.get(opcode).map(_._1).getOrElse(1)
-        case _ => // skip
+        case blankPat() => // skip
+        case _ => sys.error("invalid line: " ++ line)
       }
     }
 
