@@ -12,7 +12,7 @@ import Instruction._
 import Program._
 
 class Simulator(val program:Program, val settings:Settings) {
-  import program.{instructions, labels}
+  import program.{instructions, lineNumber}
   import settings.{keepStats, binMode}
 
   // registers
@@ -22,52 +22,56 @@ class Simulator(val program:Program, val settings:Settings) {
   private[this] val r = new Array[Int](32)
   private[this] val f = new Array[Float](32)
 
-  // register for return address
-  private[this] val ra = 31
-
   // memory
-  private[this] val ram = new Array[Int](1024 * 1024)
+  private[this] val ram = new Array[Int](1 << 20)
 
-  private[this] val execStats = new Array[Int](instructions.length)
-  private[this] val callStats = new Array[Int](instructions.length)
+  private[this] val ra = 31 // return address
 
   private[this] val scanner = new Scanner(System.in)
   private[this] val binIn = new DataInputStream(System.in)
   private[this] val buf = new Array[Byte](4)
 
-  private[this] var elapsed = 0L
-
   def reset() {
     pc = 0
-    hi = 0
-    lo = 0
-    (0 to 31).foreach { i =>
-      r(i) = 0
-      f(i) = 0
-    }
-    (0 until instructions.length).foreach { i =>
-      execStats(i) = 0
-      callStats(i) = 0
-    }
   }
 
   def run() {
     reset()
 
     val instructions = program.instructions
+    var _pc = 0 // previous pc for debug
 
-    if (keepStats) {
-      val start = System.currentTimeMillis()
-      while (pc != instructions.length) {
-        execStats(pc) += 1
-        execute(instructions(pc))
+    try {
+      if (keepStats) {
+        val start = System.currentTimeMillis()
+        val stats = new Array[Int](instructions.length)
+        while (pc != instructions.length) {
+          stats(pc) += 1
+          execute(instructions(pc))
+          _pc = pc
+        }
+        reportStats(System.currentTimeMillis() - start, stats)
+      } else {
+        while (pc != instructions.length) {
+          execute(instructions(pc))
+        }
       }
-      elapsed = System.currentTimeMillis() - start
-      reportStats()
-    } else {
-      while (pc != instructions.length) {
-        execute(instructions(pc))
-      }
+    } catch {
+      case e:ArrayIndexOutOfBoundsException =>
+        if (0 <= pc && pc < instructions.length) {
+          val addr = instructions(_pc) match {
+            case Lw(_, rs, imm) => r(rs) + imm
+            case Sw(_, rs, imm) => r(rs) + imm
+            case Lwf(_, rs, imm) => r(rs) + imm
+            case Swf(_, rs, imm) => r(rs) + imm
+            case _ => throw e
+          }
+          sys.error("invalid memory access: " + addr.toString + 
+                    " (at line: " + lineNumber(_pc).toString + ")")
+        } else {
+          sys.error("invalid jump: " + pc.toString +
+                    " (at line: " + lineNumber(_pc).toString + ")")
+        }
     }
   }
 
@@ -82,7 +86,7 @@ class Simulator(val program:Program, val settings:Settings) {
       case Srlv(rd, rs, rt) => r(rd) = r(rs) >>> r(rt)
       case Srav(rd, rs, rt) => r(rd) = r(rs) >> r(rt)
       case Jr(rs) => pc = r(rs)
-      case Jalr(rs) => r(ra) = pc; pc = r(rs); if (keepStats) callStats(pc) += 1;
+      case Jalr(rs) => r(ra) = pc; pc = r(rs)
       case Mfhi(rd) => r(rd) = hi
       case Mthi(rs) => hi = r(rs)
       case Mflo(rd) => r(rd) = lo
@@ -119,7 +123,7 @@ class Simulator(val program:Program, val settings:Settings) {
       case Swf(ft, rs, imm) => ram(r(rs) + imm) = Float.floatToRawIntBits(f(ft))
       // J format
       case J(addr) => pc = addr
-      case Jal(addr) => r(ra) = pc; pc = addr; if (keepStats) callStats(pc) += 1;
+      case Jal(addr) => r(ra) = pc; pc = addr
       case Halt(_) => pc = instructions.length
       // F format
       case Fadd(fd, fs, ft) => f(fd) = f(fs) + f(ft)
@@ -149,7 +153,7 @@ class Simulator(val program:Program, val settings:Settings) {
     }
   }
 
-  def reportStats() {
+  def reportStats(elapsed:Long, execStats:Array[Int]) {
     val instStats = mutable.Map[String, Int]()
 
     (0 until instructions.length).foreach { i =>
@@ -158,22 +162,14 @@ class Simulator(val program:Program, val settings:Settings) {
     }
     
     val decending = Ordering[Int].reverse
-    val table1 = instStats.toSeq.sortBy(_._2)(decending)
-    val table2 = labels.mapValues(i => callStats(i)).toSeq.sortBy(_._2)(decending)
-    val issued = table1.iterator.map(_._2).foldLeft(0L)(_ + _)
+    val table = instStats.toSeq.sortBy(_._2)(decending)
+    val issued = table.iterator.map(_._2).foldLeft(0L)(_ + _)
 
-    Console.err.println("1. General")
     Console.err.println("total time\t" + elapsed.toString + " ms")
     Console.err.println("total issued\t" + issued.toString + " insts")
     
-    Console.err.println("2. Issue")
-    table1.foreach { case (op, count) =>
+    table.takeWhile(t => t._2 > 0).foreach { case (op, count) =>
       Console.err.println(op + "\t" + count.toString)
-    }
-
-    Console.err.println("3. Call")
-    table2.iterator.takeWhile(_._2 > 0).foreach { case (label, count) =>
-      Console.err.println(label + "\t" + count.toString)
     }
   }
 }

@@ -15,7 +15,7 @@ object Program {
   def fromAssembly(file:File):Program = {
     val in = new FileInputStream(file)
     try {
-      AssemblyParser.parse(in)
+      Assembler.assemble(in)
     } finally {
       in.close
     }
@@ -24,23 +24,29 @@ object Program {
   def fromAssembly(files:Seq[File]):Program = {
     val in = new SequenceInputStream(files.map(new FileInputStream(_)).iterator)
     try {
-      AssemblyParser.parse(in)
+      Assembler.assemble(in)
     } finally {
       in.close
     }
   }
 }
 
-case class Program(instructions:Array[Instruction], labels:Map[String, Int])
+case class Program(instructions:Array[Instruction], lineNumber:Array[Int])
 
-object AssemblyParser extends RegexParsers {
+object Assembler extends RegexParsers {
+  val zero = 0 // zero register
+  val at = 1   // temporaty regiser for psuedo instructions
+  val sp = 29  // stack pointer
+  val hp = 30  // heap pointer
+
+  private var section = 0 // 0: text, 1: data
   private var pos = 0
   private val labels = mutable.Map[String, Int]()
+  private var dataPos = 0
+  private val dataLabels = mutable.Map[String, Int]()
 
   def decimal = "-?\\d+".r ^^ { BigInt(_) }
-  def hex = "0x[0-9a-f]+".r ^^ { s =>
-      s.iterator.drop(2).map("0123456789abcdef".indexOf(_)).foldLeft(BigInt(0))(_ * 16 + _)
-  }
+  def hex = "0x[0-9a-f]+".r ^^ { s => BigInt(s.substring(2), 16) }
   def int = hex | decimal
   def int32 = int >> { n =>
     if (Int.MinValue <= n && n <= Int.MaxValue)
@@ -63,7 +69,7 @@ object AssemblyParser extends RegexParsers {
   def float = """-?(\d+(\.\d*)?|\d*\.\d+)([eE][+-]?\d+)?""".r ^^ { s =>
     Float.floatToRawIntBits(s.toFloat)
   }
-  def label = "[\\w.]+".r ^? (labels, ("missing label: " + _))
+  def label = "[\\w.]+".r ^? (labels orElse dataLabels, ("missing label: " + _))
   def paren[T](p:Parser[T]) = "(" ~> p <~ ")"
   def r = "r\\d+".r >> { s =>
     val n = BigInt(s.tail)
@@ -155,73 +161,134 @@ object AssemblyParser extends RegexParsers {
     "dumpf" -> (f ^^ { case fs => Dumpf(fs) })
   )
 
-  val zero = 0 // zero register
-  val at = 1   // temporaty regiser for psuedo instructions
-  val pseudoInstTable:Map[String, (Int, Parser[Array[Instruction]])] = Map(
-    "move"  -> ((1, r_ ~ r ^^ { case rt ~ rs => Array(Add(rt, rs, zero)) })),
-    "neg"   -> ((1, r_ ~ r ^^ { case rt ~ rs => Array(Sub(rt, zero, rs)) })),
-    "lwx"   -> ((2, r_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => Array(Add(at, rs, rt), Lw(rd, at, 0)) })),
-    "swx"   -> ((2, r_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => Array(Add(at, rs, rt), Sw(rd, at, 0)) })),
-    "lwfx"  -> ((2, f_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => Array(Add(at, rs, rt), Lwf(rd, at, 0)) })),
-    "swfx"  -> ((2, f_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => Array(Add(at, rs, rt), Swf(rd, at, 0)) })),
-    "blt"   -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Array(Slt(at, rt, rs), Bgtz(at, a - pos - 2)) })),
-    "ble"   -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Array(Sub(at, rt, rs), Blez(at, a - pos - 2)) })),
-    "bgt"   -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Array(Slt(at, rs, rt), Bgtz(at, a - pos - 2)) })),
-    "bge"   -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Array(Sub(at, rt, rs), Bgez(at, a - pos - 2)) })),
-    "li"    -> ((1, r_ ~ int16 ^^ { case rt ~ imm => Array(Ori(rt, zero, imm)) })),
-    "ll"    -> ((1, r_ ~ label ^^ { case rt ~ imm => Array(Ori(rt, zero, imm)) })),
-    "fmove" -> ((1, f_ ~ f ^^ { case rt ~ rs => Array(Fadd(rt, rs, zero)) })),
-    "fbeq"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => Array(Fcseq(at, rt, rs), Bgtz(at, a - pos - 2)) })),
-    "fbne"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => Array(Fcseq(at, rt, rs), Blez(at, a - pos - 2)) })),
-    "fblt"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => Array(Fclt(at, rt, rs), Bgtz(at, a - pos - 2)) })),
-    "fble"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => Array(Fcle(at, rt, rs), Bgtz(at, a - pos - 2)) })),
-    "fbgt"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => Array(Fcle(at, rt, rs), Blez(at, a - pos - 2)) })),
-    "fbge"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => Array(Fclt(at, rt, rs), Blez(at, a - pos - 2)) })),
+  val pseudoInstTable:Map[String, (Int, Parser[List[Instruction]])] = Map(
+    "move"  -> ((1, r_ ~ r ^^ { case rt ~ rs => List(Add(rt, rs, zero)) })),
+    "neg"   -> ((1, r_ ~ r ^^ { case rt ~ rs => List(Sub(rt, zero, rs)) })),
+    "lwx"   -> ((2, r_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => List(Add(at, rs, rt), Lw(rd, at, 0)) })),
+    "swx"   -> ((2, r_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => List(Add(at, rs, rt), Sw(rd, at, 0)) })),
+    "lwfx"  -> ((2, f_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => List(Add(at, rs, rt), Lwf(rd, at, 0)) })),
+    "swfx"  -> ((2, f_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => List(Add(at, rs, rt), Swf(rd, at, 0)) })),
+    "blt"   -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => List(Slt(at, rt, rs), Bgtz(at, a - pos - 2)) })),
+    "ble"   -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => List(Sub(at, rt, rs), Blez(at, a - pos - 2)) })),
+    "bgt"   -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => List(Slt(at, rs, rt), Bgtz(at, a - pos - 2)) })),
+    "bge"   -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => List(Sub(at, rt, rs), Bgez(at, a - pos - 2)) })),
+    "li"    -> ((1, r_ ~ int16 ^^ { case rt ~ imm => List(Ori(rt, zero, imm)) })),
+    "la"    -> ((1, r_ ~ label ^^ { case rt ~ a => List(Ori(rt, zero, a)) })),
+    "fmove" -> ((1, f_ ~ f ^^ { case rt ~ rs => List(Fadd(rt, rs, zero)) })),
+    "fbeq"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => List(Fcseq(at, rt, rs), Bgtz(at, a - pos - 2)) })),
+    "fbne"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => List(Fcseq(at, rt, rs), Blez(at, a - pos - 2)) })),
+    "fblt"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => List(Fclt(at, rt, rs), Bgtz(at, a - pos - 2)) })),
+    "fble"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => List(Fcle(at, rt, rs), Bgtz(at, a - pos - 2)) })),
+    "fbgt"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => List(Fcle(at, rt, rs), Blez(at, a - pos - 2)) })),
+    "fbge"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => List(Fclt(at, rt, rs), Blez(at, a - pos - 2)) })),
     "fli"   -> ((3, f_ ~ float ^^ { case rt ~ imm =>
-                                      Array(Lui(at, imm >> 16), Ori(at, at, imm & 0xffff), Imvf(rt, at)) }))
+                 List(Lui(at, imm >> 16), Ori(at, at, imm & 0xffff), Imvf(rt, at)) }))
   )
 
-  def parse(source:Source):Program = {
-    val lines = new ArrayBuffer[(Int, String, String)]()
-    val labelPat = "\\s*([\\w.]+):\\s*".r
-    val instPat  = "\\s*(\\w+)(.*)".r
-    val blankPat = "\\s*".r
+  val dirTable:Map[String, Parser[(List[Instruction], Int)]] = {
+    def li(n:Int) =
+      if (-(1 << 15) <= n && n < (1 << 15)) List(Ori(at, zero, n))
+      else List(Lui(at, n >> 16), Ori(at, at, n & 0xffff))
+
+    Map(
+      "text"  -> success_ { section = 0; (Nil, 0) },
+      "data"  -> success_ { section = 1; (Nil, 0) },
+      "int"   -> (int32 ^^ { case v => (li(v) :+ Sw(at, zero, dataPos), 1) }),
+      "float" -> (float ^^ { case v => (li(v) :+ Sw(at, zero, dataPos), 1) }),
+      "addr"  -> (label ^^ { case a => (li(a) :+ Sw(at, zero, dataPos), 1) }),
+      "space" -> (int16 ^^ { case s => (Nil, s) }),
+      "fill"  -> (int16 ~ "," ~ int32 ^^ { case s ~ _ ~ v =>
+                   (li(v) ++ List(Ori(2, zero, s), Addi(2, 2, -1), Sw(at, 2, dataPos), Bgtz(2, -3)), s) })
+    )
+  }
+
+  def success_[T](v: => T):Parser[T] = commit(success(v))
+
+  def doParse[T](p:Parser[T], s:String):T =
+    parseAll(p, s) match {
+      case Success(result, _) => result
+      case e => sys.error(e.toString)
+    }
+
+  def reset() {
+    section = 0
     pos = 0
     labels.clear()
+    dataPos = 0
+    dataLabels.clear()
+  }
 
-    source.getLines.foreach { line =>
+  def assemble(source:Source):Program = {
+    reset()
+
+    val labelPat = "\\s*([\\w.]+):\\s*".r
+    val instPat  = "\\s*(\\w+)(.*)".r
+    val dirPat   = "\\s*\\.(\\w+)(.*)".r
+    val blankPat = "\\s*".r
+
+    val main = new ArrayBuffer[(String, String, Int)]()
+    val loader = new ArrayBuffer[Instruction]()
+
+    loader += Xor(zero, zero, zero)
+    loader += Imvf(zero, zero)
+    loader += Ori(at, zero, 1)
+    loader += Sll(hp, at, 10)
+    loader += Sll(sp, at, 20)
+    loader += Addi(sp, sp, -1)
+
+    source.getLines.zipWithIndex.foreach { case (line, lineNr) =>
       line.replaceFirst("#.*$", "") match {
         case labelPat(label) =>
-          labels(label) = pos
+          if (section == 0) {
+            labels(label) = pos
+          } else {
+            dataLabels(label) = dataPos
+          }
         case instPat(opcode, operands) =>
-          lines += ((pos, opcode, operands))
+          main += ((opcode, operands, lineNr + 1))
           pos += pseudoInstTable.get(opcode).map(_._1).getOrElse(1)
+        case dirPat(directive, operands) =>
+          if (dirTable.contains(directive)) {
+            val (insts, size) = doParse(dirTable(directive), operands)
+            loader ++= insts
+            dataPos += size
+          } else {
+            sys.error("unknown directive: " + directive)
+          }
         case blankPat() => // skip
         case _ => sys.error("invalid line: " ++ line)
       }
     }
 
-    val instructions = new Array[Instruction](pos)
+    if (dataPos > (1 << 10)) {
+      sys.error("too large data section")
+    }
 
-    lines.foreach { case (p, opcode, operands) =>
-      pos = p
+    val instructions = new Array[Instruction](loader.length + pos)
+    val lineNumber = new Array[Int](loader.length + pos)
+
+    loader.copyToArray(instructions)
+    pos = loader.length
+    labels.keys.foreach { label =>
+      labels(label) += loader.length
+    }
+
+    main.iterator.foreach { case (opcode, operands, lineNr) =>
       if (instTable.contains(opcode)) {
-        parseAll(instTable(opcode), operands) match {
-          case Success(result, _) => instructions(pos) = result
-          case e => sys.error(e.toString)
-        }
+        instructions(pos) = doParse(instTable(opcode), operands)
       } else if (pseudoInstTable.contains(opcode)) {
-        parseAll(pseudoInstTable(opcode)._2, operands) match {
-          case Success(result, _) => result.copyToArray(instructions, pos)
-          case e => sys.error(e.toString)
-        }
+        doParse(pseudoInstTable(opcode)._2, operands).copyToArray(instructions, pos)
       } else {
         sys.error("unknown op: " + opcode)
       }
+
+      val n = pseudoInstTable.get(opcode).map(_._1).getOrElse(1)
+      (pos until (pos+n)).foreach(i => lineNumber(i) = lineNr)
+      pos += n
     }
 
-    Program(instructions, labels.toMap)
+    Program(instructions, lineNumber)
   }
 
-  def parse(in:InputStream):Program = parse(Source.fromInputStream(in))
+  def assemble(in:InputStream):Program = assemble(Source.fromInputStream(in))
 }
