@@ -135,7 +135,7 @@ object Assembler extends RegexParsers {
     // J format
     "j"     -> (label ^^ { case a => J(a) }),
     "jal"   -> (label ^^ { case a => Jal(a) }),
-    "halt"  -> success(Halt(pos)),
+    "halt"  -> success_ { Halt(pos) },
     // F format
     "fadd"  -> (f_ ~ f_ ~ f ^^ { case rd ~ rs ~ rt => Fadd(rd, rs, rt) }),
     "fsub"  -> (f_ ~ f_ ~ f ^^ { case rd ~ rs ~ rt => Fsub(rd, rs, rt) }),
