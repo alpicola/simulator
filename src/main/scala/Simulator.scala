@@ -100,6 +100,8 @@ class Simulator(val program:Program, val settings:Settings) {
       case Xor(rd, rs, rt) => r(rd) = r(rs) ^ r(rt)
       case Nor(rd, rs, rt) => r(rd) = ~(r(rs) | r(rt))
       case Slt(rd, rs, rt) => r(rd) = if (r(rs) < r(rt)) 1 else 0
+      case Lwx(rd, rs, rt) => r(rd) = ram(r(rs) + r(rt))
+      case Swx(rd, rs, rt) => ram(r(rs) + r(rt)) = r(rd)
       // I format
       case Beq(rt, rs, imm) => if (r(rt) == r(rs)) pc += imm
       case Bne(rt, rs, imm) => if (r(rt) != r(rs)) pc += imm
@@ -113,14 +115,13 @@ class Simulator(val program:Program, val settings:Settings) {
       case Ori(rt, rs, imm) =>  r(rt) = r(rs) | imm
       case Xori(rt, rs, imm) => r(rt) = r(rs) ^ imm
       case Lui(rt, imm) => r(rt) = imm << 16
-      case Bclf(rt, imm) => if (r(rt) == 0) pc += imm
-      case Bclt(rt, imm) => if (r(rt) == 1) pc += imm
       case Imvf(ft, rs) => f(ft) = Float.intBitsToFloat(r(rs))
       case Fmvi(rt, fs) => r(rt) = Float.floatToRawIntBits(f(fs))
       case Lw(rt, rs, imm) => r(rt) = ram(r(rs) + imm)
       case Sw(rt, rs, imm) => ram(r(rs) + imm) = r(rt)
       case Lwf(ft, rs, imm) => f(ft) = Float.intBitsToFloat(ram(r(rs) + imm))
       case Swf(ft, rs, imm) => ram(r(rs) + imm) = Float.floatToRawIntBits(f(ft))
+      case Break() =>
       // J format
       case J(addr) => pc = addr
       case Jal(addr) => r(ra) = pc; pc = addr
@@ -129,7 +130,7 @@ class Simulator(val program:Program, val settings:Settings) {
       case Fadd(fd, fs, ft) => f(fd) = f(fs) + f(ft)
       case Fsub(fd, fs, ft) => f(fd) = f(fs) - f(ft)
       case Fmul(fd, fs, ft) => f(fd) = f(fs) * f(ft)
-      case Fdiv(fd, fs, ft) => f(fd) = f(fs) / f(ft)
+      case Fmove(fd, fs) => f(fd) = f(fs)
       case Fabs(fd, fs) => f(fd) = abs(f(fs))
       case Fneg(fd, fs) => f(fd) = -f(fs)
       case Finv(fd, fs) => f(fd) = 1.0f / f(fs)

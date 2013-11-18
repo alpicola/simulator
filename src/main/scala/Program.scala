@@ -105,6 +105,8 @@ object Assembler extends RegexParsers {
     "xor"   -> (r_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => Xor(rd, rs, rt) }),
     "nor"   -> (r_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => Nor(rd, rs, rt) }),
     "slt"   -> (r_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => Slt(rd, rs, rt) }),
+    "lwx"    -> (r_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => Lwx(rd, rs, rt) }),
+    "swx"    -> (r_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => Swx(rd, rs, rt) }),
     // I format
     "beq"   -> (r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Beq(rt, rs, a - pos - 1) }),
     "bne"   -> (r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => Bne(rt, rs, a - pos - 1) }),
@@ -118,20 +120,13 @@ object Assembler extends RegexParsers {
     "ori"   -> (r_ ~ r_ ~ int16 ^^ { case rt ~ rs ~ imm => Ori(rt, rs, imm) }),
     "xori"  -> (r_ ~ r_ ~ int16 ^^ { case rt ~ rs ~ imm => Xori(rt, rs, imm) }),
     "lui"   -> (r_ ~ int16 ^^ { case rt ~ imm => Lui(rt, imm) }),
-    "bclf"  -> (r_ ~ int16 ^^ { case rt ~ imm => Bclf(rt, imm) }),
-    "bclt"  -> (r_ ~ int16 ^^ { case rt ~ imm => Bclt(rt, imm) }),
     "imvf"  -> (f_ ~ r ^^ { case rt ~ rs => Imvf(rt, rs) }),
     "fmvi"  -> (r_ ~ f ^^ { case rt ~ rs => Fmvi(rt, rs) }),
-    "lb"    -> (r_ ~ int16 ~ paren(r) ^^ { case rt ~ imm ~ rs => Lb(rt, rs, imm) }),
-    "lh"    -> (r_ ~ int16 ~ paren(r) ^^ { case rt ~ imm ~ rs => Lh(rt, rs, imm) }),
     "lw"    -> (r_ ~ int16 ~ paren(r) ^^ { case rt ~ imm ~ rs => Lw(rt, rs, imm) }),
-    "lbu"   -> (r_ ~ int16 ~ paren(r) ^^ { case rt ~ imm ~ rs => Lbu(rt, rs, imm) }),
-    "lhu"   -> (r_ ~ int16 ~ paren(r) ^^ { case rt ~ imm ~ rs => Lhu(rt, rs, imm) }),
-    "sb"    -> (r_ ~ int16 ~ paren(r) ^^ { case rt ~ imm ~ rs => Sb(rt, rs, imm) }),
-    "sh"    -> (r_ ~ int16 ~ paren(r) ^^ { case rt ~ imm ~ rs => Sh(rt, rs, imm) }),
     "sw"    -> (r_ ~ int16 ~ paren(r) ^^ { case rt ~ imm ~ rs => Sw(rt, rs, imm) }),
     "lwf"   -> (f_ ~ int16 ~ paren(r) ^^ { case rt ~ imm ~ rs => Lwf(rt, rs, imm) }),
     "swf"   -> (f_ ~ int16 ~ paren(r) ^^ { case rt ~ imm ~ rs => Swf(rt, rs, imm) }),
+    "break" -> success_ { Break() },
     // J format
     "j"     -> (label ^^ { case a => J(a) }),
     "jal"   -> (label ^^ { case a => Jal(a) }),
@@ -140,11 +135,11 @@ object Assembler extends RegexParsers {
     "fadd"  -> (f_ ~ f_ ~ f ^^ { case rd ~ rs ~ rt => Fadd(rd, rs, rt) }),
     "fsub"  -> (f_ ~ f_ ~ f ^^ { case rd ~ rs ~ rt => Fsub(rd, rs, rt) }),
     "fmul"  -> (f_ ~ f_ ~ f ^^ { case rd ~ rs ~ rt => Fmul(rd, rs, rt) }),
-    "fdiv"  -> (f_ ~ f_ ~ f ^^ { case rd ~ rs ~ rt => Fdiv(rd, rs, rt) }),
     "fabs"  -> (f_ ~ f ^^ { case rd ~ rs => Fabs(rd, rs) }),
     "fneg"  -> (f_ ~ f ^^ { case rd ~ rs => Fneg(rd, rs) }),
     "finv"  -> (f_ ~ f ^^ { case rd ~ rs => Finv(rd, rs) }),
     "fsqrt" -> (f_ ~ f ^^ { case rd ~ rs => Fsqrt(rd, rs) }),
+    "fmove" -> (f_ ~ f ^^ { case rd ~ rs => Fmove(rd, rs) }),
     "fcseq" -> (r_ ~ f_ ~ f ^^ { case rd ~ rs ~ rt => Fcseq(rd, rs, rt) }),
     "fclt"  -> (r_ ~ f_ ~ f ^^ { case rd ~ rs ~ rt => Fclt(rd, rs, rt) }),
     "fcle"  -> (r_ ~ f_ ~ f ^^ { case rd ~ rs ~ rt => Fcle(rd, rs, rt) }),
@@ -174,15 +169,13 @@ object Assembler extends RegexParsers {
     "bge"   -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => List(Sub(at, rt, rs), Bgez(at, a - pos - 2)) })),
     "li"    -> ((1, r_ ~ int16 ^^ { case rt ~ imm => List(Ori(rt, zero, imm)) })),
     "la"    -> ((1, r_ ~ label ^^ { case rt ~ a => List(Ori(rt, zero, a)) })),
-    "fmove" -> ((1, f_ ~ f ^^ { case rt ~ rs => List(Fadd(rt, rs, zero)) })),
+    "fdiv"  -> ((2, f_ ~ f_ ~ f ^^ { case rd ~ rs ~ rt => List(Finv(at, rt), Fmul(rd, rs, at)) })),
     "fbeq"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => List(Fcseq(at, rt, rs), Bgtz(at, a - pos - 2)) })),
     "fbne"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => List(Fcseq(at, rt, rs), Blez(at, a - pos - 2)) })),
     "fblt"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => List(Fclt(at, rt, rs), Bgtz(at, a - pos - 2)) })),
     "fble"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => List(Fcle(at, rt, rs), Bgtz(at, a - pos - 2)) })),
     "fbgt"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => List(Fcle(at, rt, rs), Blez(at, a - pos - 2)) })),
-    "fbge"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => List(Fclt(at, rt, rs), Blez(at, a - pos - 2)) })),
-    "fli"   -> ((3, f_ ~ float ^^ { case rt ~ imm =>
-                 List(Lui(at, imm >> 16), Ori(at, at, imm & 0xffff), Imvf(rt, at)) }))
+    "fbge"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => List(Fclt(at, rt, rs), Blez(at, a - pos - 2)) }))
   )
 
   val dirTable:Map[String, Parser[(List[Instruction], Int)]] = {
