@@ -121,6 +121,7 @@ class Simulator(val program:Program, val settings:Settings) {
       case Sw(rt, rs, imm) => ram(r(rs) + imm) = r(rt)
       case Lwf(ft, rs, imm) => f(ft) = Float.intBitsToFloat(ram(r(rs) + imm))
       case Swf(ft, rs, imm) => ram(r(rs) + imm) = Float.floatToRawIntBits(f(ft))
+      case Break() =>
       // J format
       case J(addr) => pc = addr
       case Jal(addr) => r(ra) = pc; pc = addr
