@@ -173,7 +173,7 @@ object Assembler extends RegexParsers {
     "bgt"   -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => List(Slt(at, rs, rt), Bgtz(at, a - pos - 2)) })),
     "bge"   -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => List(Sub(at, rt, rs), Bgez(at, a - pos - 2)) })),
     "li"    -> ((1, r_ ~ int16 ^^ { case rt ~ imm => List(Ori(rt, zero, imm)) })),
-    "la"    -> ((1, r_ ~ label ^^ { case rt ~ a => List(Ori(rt, zero, a)) })),
+    "la"    -> ((1, r_ ~ label ^^ { case rt ~ a => List(Lw(rt, zero, a)) })),
     "fmove" -> ((1, f_ ~ f ^^ { case rt ~ rs => List(Fadd(rt, rs, zero)) })),
     "fbeq"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => List(Fcseq(at, rt, rs), Bgtz(at, a - pos - 2)) })),
     "fbne"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => List(Fcseq(at, rt, rs), Blez(at, a - pos - 2)) })),
@@ -187,7 +187,7 @@ object Assembler extends RegexParsers {
 
   val dirTable:Map[String, Parser[(List[Instruction], Int)]] = {
     def li(n:Int) =
-      if (-(1 << 15) <= n && n < (1 << 15)) List(Ori(at, zero, n))
+      if (0 <= n && n < (1 << 16)) List(Ori(at, zero, n))
       else List(Lui(at, n >> 16), Ori(at, at, n & 0xffff))
 
     Map(
