@@ -47,24 +47,19 @@ object Assembler extends RegexParsers {
 
   def decimal = "-?\\d+".r ^^ { BigInt(_) }
   def hex = "0x[0-9a-f]+".r ^^ { s => BigInt(s.substring(2), 16) }
-  def int = hex | decimal
-  def int32 = int >> { n =>
-    if (Int.MinValue <= n && n <= Int.MaxValue)
+  def int(size:Int) = (hex | decimal) >> { n =>
+    if (-(1 << (size - 1)) <= n && n < (1 << (size - 1)))
       success(n.toInt)
     else
-      failure("immediate value out of range: " + n.toString)
+      failure("immediate value out of range for " +
+        size.toString +  "-bit int: " + n.toString)
   }
-  def int16 = int >> { n =>
-    if (-(1 << 15) <= n && n < (1 << 15))
+  def uint(size:Int) = (hex | decimal) >> { n =>
+    if (0 <= n && n < (1L << size))
       success(n.toInt)
     else
-      failure("immediate value out of range: " + n.toString)
-  }
-  def uint5 = int >> { n =>
-    if (0 <= n && n < 32)
-      success(n.toInt)
-    else
-      failure("immediate value out of range: " + n.toString)
+      failure("immediate value out of range for " +
+        size.toString +  "-bit unsigned int: " + n.toString)
   }
   def float = """-?(\d+(\.\d*)?|\d*\.\d+)([eE][+-]?\d+)?""".r ^^ { s =>
     Float.floatToRawIntBits(s.toFloat)
@@ -84,9 +79,9 @@ object Assembler extends RegexParsers {
 
   val instTable:Map[String, Parser[Instruction]] = Map(
     // R format
-    "sll"   -> (r_ ~ r_ ~ uint5 ^^ { case rd ~ rs ~ s => Sll(rd, rs, s) }),
-    "srl"   -> (r_ ~ r_ ~ uint5 ^^ { case rd ~ rs ~ s => Srl(rd, rs, s) }),
-    "sra"   -> (r_ ~ r_ ~ uint5 ^^ { case rd ~ rs ~ s => Sra(rd, rs, s) }),
+    "sll"   -> (r_ ~ r_ ~ uint(5) ^^ { case rd ~ rs ~ s => Sll(rd, rs, s) }),
+    "srl"   -> (r_ ~ r_ ~ uint(5) ^^ { case rd ~ rs ~ s => Srl(rd, rs, s) }),
+    "sra"   -> (r_ ~ r_ ~ uint(5) ^^ { case rd ~ rs ~ s => Sra(rd, rs, s) }),
     "sllv"  -> (r_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => Sllv(rd, rs, rt) }),
     "srlv"  -> (r_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => Srlv(rd, rs, rt) }),
     "srav"  -> (r_ ~ r_ ~ r ^^ { case rd ~ rs ~ rt => Srav(rd, rs, rt) }),
@@ -112,26 +107,24 @@ object Assembler extends RegexParsers {
     "bgez"  -> (r_ ~ label ^^ { case rs ~ a => Bgez(rs, a - pos - 1) }),
     "blez"  -> (r_ ~ label ^^ { case rs ~ a => Blez(rs, a - pos - 1) }),
     "bgtz"  -> (r_ ~ label ^^ { case rs ~ a => Bgtz(rs, a - pos - 1) }),
-    "addi"  -> (r_ ~ r_ ~ int16 ^^ { case rt ~ rs ~ imm => Addi(rt, rs, imm) }),
-    "slti"  -> (r_ ~ r_ ~ int16 ^^ { case rt ~ rs ~ imm => Slti(rt, rs, imm) }),
-    "andi"  -> (r_ ~ r_ ~ int16 ^^ { case rt ~ rs ~ imm => Andi(rt, rs, imm) }),
-    "ori"   -> (r_ ~ r_ ~ int16 ^^ { case rt ~ rs ~ imm => Ori(rt, rs, imm) }),
-    "xori"  -> (r_ ~ r_ ~ int16 ^^ { case rt ~ rs ~ imm => Xori(rt, rs, imm) }),
-    "lui"   -> (r_ ~ int16 ^^ { case rt ~ imm => Lui(rt, imm) }),
-    "bclf"  -> (r_ ~ int16 ^^ { case rt ~ imm => Bclf(rt, imm) }),
-    "bclt"  -> (r_ ~ int16 ^^ { case rt ~ imm => Bclt(rt, imm) }),
+    "addi"  -> (r_ ~ r_ ~ int(16) ^^ { case rt ~ rs ~ imm => Addi(rt, rs, imm) }),
+    "slti"  -> (r_ ~ r_ ~ int(16) ^^ { case rt ~ rs ~ imm => Slti(rt, rs, imm) }),
+    "andi"  -> (r_ ~ r_ ~ uint(16) ^^ { case rt ~ rs ~ imm => Andi(rt, rs, imm) }),
+    "ori"   -> (r_ ~ r_ ~ uint(16) ^^ { case rt ~ rs ~ imm => Ori(rt, rs, imm) }),
+    "xori"  -> (r_ ~ r_ ~ uint(16) ^^ { case rt ~ rs ~ imm => Xori(rt, rs, imm) }),
+    "lui"   -> (r_ ~ uint(16) ^^ { case rt ~ imm => Lui(rt, imm) }),
+    "bclf"  -> (r_ ~ int(16) ^^ { case rt ~ imm => Bclf(rt, imm) }),
+    "bclt"  -> (r_ ~ int(16) ^^ { case rt ~ imm => Bclt(rt, imm) }),
     "imvf"  -> (f_ ~ r ^^ { case rt ~ rs => Imvf(rt, rs) }),
     "fmvi"  -> (r_ ~ f ^^ { case rt ~ rs => Fmvi(rt, rs) }),
-    "lb"    -> (r_ ~ int16 ~ paren(r) ^^ { case rt ~ imm ~ rs => Lb(rt, rs, imm) }),
-    "lh"    -> (r_ ~ int16 ~ paren(r) ^^ { case rt ~ imm ~ rs => Lh(rt, rs, imm) }),
-    "lw"    -> (r_ ~ int16 ~ paren(r) ^^ { case rt ~ imm ~ rs => Lw(rt, rs, imm) }),
-    "lbu"   -> (r_ ~ int16 ~ paren(r) ^^ { case rt ~ imm ~ rs => Lbu(rt, rs, imm) }),
-    "lhu"   -> (r_ ~ int16 ~ paren(r) ^^ { case rt ~ imm ~ rs => Lhu(rt, rs, imm) }),
-    "sb"    -> (r_ ~ int16 ~ paren(r) ^^ { case rt ~ imm ~ rs => Sb(rt, rs, imm) }),
-    "sh"    -> (r_ ~ int16 ~ paren(r) ^^ { case rt ~ imm ~ rs => Sh(rt, rs, imm) }),
-    "sw"    -> (r_ ~ int16 ~ paren(r) ^^ { case rt ~ imm ~ rs => Sw(rt, rs, imm) }),
-    "lwf"   -> (f_ ~ int16 ~ paren(r) ^^ { case rt ~ imm ~ rs => Lwf(rt, rs, imm) }),
-    "swf"   -> (f_ ~ int16 ~ paren(r) ^^ { case rt ~ imm ~ rs => Swf(rt, rs, imm) }),
+    "lb"    -> (r_ ~ int(16) ~ paren(r) ^^ { case rt ~ imm ~ rs => Lb(rt, rs, imm) }),
+    "lh"    -> (r_ ~ int(16) ~ paren(r) ^^ { case rt ~ imm ~ rs => Lh(rt, rs, imm) }),
+    "lw"    -> (r_ ~ int(16) ~ paren(r) ^^ { case rt ~ imm ~ rs => Lw(rt, rs, imm) }),
+    "sb"    -> (r_ ~ int(16) ~ paren(r) ^^ { case rt ~ imm ~ rs => Sb(rt, rs, imm) }),
+    "sh"    -> (r_ ~ int(16) ~ paren(r) ^^ { case rt ~ imm ~ rs => Sh(rt, rs, imm) }),
+    "sw"    -> (r_ ~ int(16) ~ paren(r) ^^ { case rt ~ imm ~ rs => Sw(rt, rs, imm) }),
+    "lwf"   -> (f_ ~ int(16) ~ paren(r) ^^ { case rt ~ imm ~ rs => Lwf(rt, rs, imm) }),
+    "swf"   -> (f_ ~ int(16) ~ paren(r) ^^ { case rt ~ imm ~ rs => Swf(rt, rs, imm) }),
     // J format
     "j"     -> (label ^^ { case a => J(a) }),
     "jal"   -> (label ^^ { case a => Jal(a) }),
@@ -172,7 +165,7 @@ object Assembler extends RegexParsers {
     "ble"   -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => List(Sub(at, rt, rs), Blez(at, a - pos - 2)) })),
     "bgt"   -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => List(Slt(at, rs, rt), Bgtz(at, a - pos - 2)) })),
     "bge"   -> ((2, r_ ~ r_ ~ label ^^ { case rt ~ rs ~ a => List(Sub(at, rt, rs), Bgez(at, a - pos - 2)) })),
-    "li"    -> ((1, r_ ~ int16 ^^ { case rt ~ imm => List(Ori(rt, zero, imm)) })),
+    "li"    -> ((1, r_ ~ int(16) ^^ { case rt ~ imm => List(Addi(rt, zero, imm)) })),
     "la"    -> ((1, r_ ~ label ^^ { case rt ~ a => List(Ori(rt, zero, a)) })),
     "fmove" -> ((1, f_ ~ f ^^ { case rt ~ rs => List(Fadd(rt, rs, zero)) })),
     "fbeq"  -> ((2, f_ ~ f_ ~ label ^^ { case rt ~ rs ~ a => List(Fcseq(at, rt, rs), Bgtz(at, a - pos - 2)) })),
@@ -186,18 +179,18 @@ object Assembler extends RegexParsers {
   )
 
   val dirTable:Map[String, Parser[(List[Instruction], Int)]] = {
-    def li(n:Int) =
-      if (-(1 << 15) <= n && n < (1 << 15)) List(Ori(at, zero, n))
+    def li(n:Int) = // for 32-bit unsigned int
+      if (0 <= n && n < (1 << 16)) List(Ori(at, zero, n))
       else List(Lui(at, n >> 16), Ori(at, at, n & 0xffff))
 
     Map(
       "text"  -> success_ { section = 0; (Nil, 0) },
       "data"  -> success_ { section = 1; (Nil, 0) },
-      "int"   -> (int32 ^^ { case v => (li(v) :+ Sw(at, zero, dataPos), 1) }),
+      "int"   -> (uint(32) ^^ { case v => (li(v) :+ Sw(at, zero, dataPos), 1) }),
       "float" -> (float ^^ { case v => (li(v) :+ Sw(at, zero, dataPos), 1) }),
       "addr"  -> (label ^^ { case a => (li(a) :+ Sw(at, zero, dataPos), 1) }),
-      "space" -> (int16 ^^ { case s => (Nil, s) }),
-      "fill"  -> (int16 ~ "," ~ int32 ^^ { case s ~ _ ~ v =>
+      "space" -> (uint(16) ^^ { case s => (Nil, s) }),
+      "fill"  -> (uint(16) ~ "," ~ uint(32) ^^ { case s ~ _ ~ v =>
                    (li(v) ++ List(Ori(2, zero, s), Addi(2, 2, -1), Sw(at, 2, dataPos), Bgtz(2, -3)), s) })
     )
   }
