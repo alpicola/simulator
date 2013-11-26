@@ -48,7 +48,7 @@ object Assembler extends RegexParsers {
   def decimal = "-?\\d+".r ^^ { BigInt(_) }
   def hex = "0x[0-9a-f]+".r ^^ { s => BigInt(s.substring(2), 16) }
   def int(size:Int) = (hex | decimal) >> { n =>
-    if (-(1 << (size - 1)) <= n && n < (1 << (size - 1)))
+    if (-(1L << (size - 1)) <= n && n < (1L << (size - 1)))
       success(n.toInt)
     else
       failure("immediate value out of range for " +
@@ -186,11 +186,12 @@ object Assembler extends RegexParsers {
     Map(
       "text"  -> success_ { section = 0; (Nil, 0) },
       "data"  -> success_ { section = 1; (Nil, 0) },
-      "int"   -> (uint(32) ^^ { case v => (li(v) :+ Sw(at, zero, dataPos), 1) }),
+      "int"   -> (int(32) ^^ { case v => (li(v) :+ Sw(at, zero, dataPos), 1) }),
+      "uint"  -> (uint(32) ^^ { case v => (li(v) :+ Sw(at, zero, dataPos), 1) }),
       "float" -> (float ^^ { case v => (li(v) :+ Sw(at, zero, dataPos), 1) }),
       "addr"  -> (label ^^ { case a => (li(a) :+ Sw(at, zero, dataPos), 1) }),
       "space" -> (uint(16) ^^ { case s => (Nil, s) }),
-      "fill"  -> (uint(16) ~ "," ~ uint(32) ^^ { case s ~ _ ~ v =>
+      "fill"  -> (uint(16) ~ "," ~ int(32) ^^ { case s ~ _ ~ v =>
                    (li(v) ++ List(Ori(2, zero, s), Addi(2, 2, -1), Sw(at, 2, dataPos), Bgtz(2, -3)), s) })
     )
   }
