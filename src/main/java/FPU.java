@@ -4,23 +4,23 @@ import java.io.*;
 
 class FPU {
     private boolean dumpEnable;
-    private DataOutputStream faddOut;
-    private DataOutputStream fsubOut;
-    private DataOutputStream fmulOut;
-    private DataOutputStream fdivOut;
-    private DataOutputStream finvOut;
-    private DataOutputStream fsqrtOut;
+    private PrintWriter faddOut;
+    private PrintWriter fsubOut;
+    private PrintWriter fmulOut;
+    private PrintWriter fdivOut;
+    private PrintWriter finvOut;
+    private PrintWriter fsqrtOut;
 
     FPU(boolean dump) throws FileNotFoundException {
         dumpEnable = dump;
 
         if (dumpEnable) {
-            faddOut = new DataOutputStream(new BufferedOutputStream(new FileOutputStream("fadd")));
-            fsubOut = new DataOutputStream(new BufferedOutputStream(new FileOutputStream("fsub")));
-            fmulOut = new DataOutputStream(new BufferedOutputStream(new FileOutputStream("fmul")));
-            fdivOut = new DataOutputStream(new BufferedOutputStream(new FileOutputStream("fdiv")));
-            finvOut = new DataOutputStream(new BufferedOutputStream(new FileOutputStream("finv")));
-            fsqrtOut = new DataOutputStream(new BufferedOutputStream(new FileOutputStream("fsqrt")));
+            faddOut = new PrintWriter("fadd");
+            fsubOut = new PrintWriter("fsub");
+            fmulOut = new PrintWriter("fmul");
+            fdivOut = new PrintWriter("fdiv");
+            finvOut = new PrintWriter("finv");
+            fsqrtOut = new PrintWriter("fsqrt");
         }
     }
 
@@ -30,9 +30,7 @@ class FPU {
         float r = a + b;
 
         if (dumpEnable) {
-            faddOut.writeFloat(a);
-            faddOut.writeFloat(b);
-            faddOut.writeFloat(r);
+            faddOut.printf("0x%8x 0x%8x 0x%8x%n", a, b, r);
         }
 
         return r;
@@ -42,9 +40,7 @@ class FPU {
         float r = a - b;
 
         if (dumpEnable) {
-            fsubOut.writeFloat(a);
-            fsubOut.writeFloat(b);
-            fsubOut.writeFloat(r);
+            fsubOut.printf("0x%8x 0x%8x 0x%8x%n", a, b, r);
         }
 
         return r;
@@ -54,9 +50,7 @@ class FPU {
         float r = a * b;
 
         if (dumpEnable) {
-            fmulOut.writeFloat(a);
-            fmulOut.writeFloat(b);
-            fmulOut.writeFloat(r);
+            fmulOut.printf("0x%8x 0x%8x 0x%8x%n", a, b, r);
         }
 
         return r;
@@ -66,9 +60,7 @@ class FPU {
         float r = a / b;
 
         if (dumpEnable) {
-            fdivOut.writeFloat(a);
-            fdivOut.writeFloat(b);
-            fdivOut.writeFloat(r);
+            fdivOut.printf("0x%8x 0x%8x 0x%8x%n", a, b, r);
         }
 
         return r;
@@ -78,8 +70,7 @@ class FPU {
         float r = 1.0f / a;
 
         if (dumpEnable) {
-            finvOut.writeFloat(a);
-            finvOut.writeFloat(r);
+            finvOut.printf("0x%8x 0x%8x%n", a, r);
         }
 
         return r;
@@ -89,8 +80,7 @@ class FPU {
         float r = (float) Math.sqrt((double) a);
 
         if (dumpEnable) {
-            fsqrtOut.writeFloat(a);
-            fsqrtOut.writeFloat(r);
+            fsqrtOut.printf("0x%8x 0x%8x%n", a, r);
         }
 
         return r;
