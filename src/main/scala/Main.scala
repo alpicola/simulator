@@ -17,7 +17,7 @@ object Main {
       val program = Program.fromAssembly(parsedArgs.map(new File(_)))
       if (settings.assemble) {
         val dest = parsedArgs.last.replaceFirst("\\.[^\\.]*$", "")
-        val out = new DataOutputStream(new FileOutputStream(dest))
+        val out = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(dest)))
         try {
           program.instructions.foreach { instruction =>
             out.writeInt(instruction.toInt)
@@ -26,16 +26,11 @@ object Main {
           out.close
         }
       } else {
-        FPU.loggingEnable = settings.dumpFops;
         settings.output.foreach { dest =>
           Console.setOut(new FileOutputStream(dest))
         }
         val simulator = new Simulator(program, settings)
         simulator.run
-
-        if (settings.dumpFops) {
-          // TODO: dump the use of FPU
-        }
       }
     } else {
       println(usageText)

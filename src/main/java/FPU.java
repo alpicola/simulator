@@ -1,84 +1,96 @@
 package cpuex4;
 
-import java.util.*;
+import java.io.*;
 
 class FPU {
-    static boolean loggingEnable;
+    private boolean dumpEnable;
+    private DataOutputStream faddOut;
+    private DataOutputStream fsubOut;
+    private DataOutputStream fmulOut;
+    private DataOutputStream fdivOut;
+    private DataOutputStream finvOut;
+    private DataOutputStream fsqrtOut;
 
-    static List<Float> faddLog = new ArrayList<Float>();
-    static List<Float> fsubLog = new ArrayList<Float>();
-    static List<Float> fmulLog = new ArrayList<Float>();
-    static List<Float> fdivLog = new ArrayList<Float>();
-    static List<Float> finvLog = new ArrayList<Float>();
-    static List<Float> fsqrtLog = new ArrayList<Float>();
+    FPU(boolean dump) throws FileNotFoundException {
+        dumpEnable = dump;
+
+        if (dumpEnable) {
+            faddOut = new DataOutputStream(new BufferedOutputStream(new FileOutputStream("fadd")));
+            fsubOut = new DataOutputStream(new BufferedOutputStream(new FileOutputStream("fsub")));
+            fmulOut = new DataOutputStream(new BufferedOutputStream(new FileOutputStream("fmul")));
+            fdivOut = new DataOutputStream(new BufferedOutputStream(new FileOutputStream("fdiv")));
+            finvOut = new DataOutputStream(new BufferedOutputStream(new FileOutputStream("finv")));
+            fsqrtOut = new DataOutputStream(new BufferedOutputStream(new FileOutputStream("fsqrt")));
+        }
+    }
 
     // TODO: These implementation should be functionally equivalent to FPU's 
 
-    static float fadd(float a, float b) {
+    float fadd(float a, float b) throws IOException {
         float r = a + b;
 
-        if (loggingEnable) {
-            faddLog.add(a);
-            faddLog.add(b);
-            faddLog.add(r);
+        if (dumpEnable) {
+            faddOut.writeFloat(a);
+            faddOut.writeFloat(b);
+            faddOut.writeFloat(r);
         }
 
         return r;
     }
 
-    static float fsub(float a, float b) {
+    float fsub(float a, float b) throws IOException {
         float r = a - b;
 
-        if (loggingEnable) {
-            fsubLog.add(a);
-            fsubLog.add(b);
-            fsubLog.add(r);
+        if (dumpEnable) {
+            fsubOut.writeFloat(a);
+            fsubOut.writeFloat(b);
+            fsubOut.writeFloat(r);
         }
 
         return r;
     }
 
-    static float fmul(float a, float b) {
+    float fmul(float a, float b) throws IOException {
         float r = a * b;
 
-        if (loggingEnable) {
-            fmulLog.add(a);
-            fmulLog.add(b);
-            fmulLog.add(r);
+        if (dumpEnable) {
+            fmulOut.writeFloat(a);
+            fmulOut.writeFloat(b);
+            fmulOut.writeFloat(r);
         }
 
         return r;
     }
 
-    static float fdiv(float a, float b) {
+    float fdiv(float a, float b) throws IOException {
         float r = a / b;
 
-        if (loggingEnable) {
-            fdivLog.add(a);
-            fdivLog.add(b);
-            fdivLog.add(r);
+        if (dumpEnable) {
+            fdivOut.writeFloat(a);
+            fdivOut.writeFloat(b);
+            fdivOut.writeFloat(r);
         }
 
         return r;
     }
 
-    static float finv(float a) {
+    float finv(float a) throws IOException {
         float r = 1.0f / a;
 
-        if (loggingEnable) {
-            finvLog.add(a);
-            finvLog.add(r);
+        if (dumpEnable) {
+            finvOut.writeFloat(a);
+            finvOut.writeFloat(r);
         }
 
         return r;
     }
 
-    static float fsqrt(float a) {
+    float fsqrt(float a) throws IOException {
         float r = (float) Math.sqrt((double) a);
 
-        if (loggingEnable) {
-            fsqrtLog.add(a);
-            fsqrtLog.add(r);
+        if (dumpEnable) {
+            fsqrtOut.writeFloat(a);
+            fsqrtOut.writeFloat(r);
         }
 
         return r;
