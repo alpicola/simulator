@@ -4,12 +4,12 @@ import java.io.*;
 
 class FPU {
     private boolean dumpEnable = false;
-    private PrintWriter faddOut;
-    private PrintWriter fsubOut;
-    private PrintWriter fmulOut;
-    private PrintWriter fdivOut;
-    private PrintWriter finvOut;
-    private PrintWriter fsqrtOut;
+    private BinWriter faddOut;
+    private BinWriter fsubOut;
+    private BinWriter fmulOut;
+    private BinWriter fdivOut;
+    private BinWriter finvOut;
+    private BinWriter fsqrtOut;
     private long faddCount = 0;
     private long fsubCount = 0;
     private long fmulCount = 0;
@@ -22,6 +22,21 @@ class FPU {
 
     FPU(boolean dump) {
         dumpEnable = dump;
+        if (dumpEnable) {
+            Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+                public void run() {
+                    try {
+                        if (faddOut != null) faddOut.close();
+                        if (fsubOut != null) fsubOut.close();
+                        if (fmulOut != null) fmulOut.close();
+                        if (fdivOut != null) fdivOut.close();
+                        if (finvOut != null) finvOut.close();
+                        if (fsqrtOut != null) fsqrtOut.close();
+                    } catch (IOException e) {
+                    }
+                }
+            }));
+        }
     }
 
     // TODO: These implementation should be functionally equivalent to FPU's 
@@ -38,11 +53,13 @@ class FPU {
                 if (splitCount > SPLIT_LIMIT) {
                     return r;
                 }
-                faddOut = new PrintWriter(String.format("fadd.%d", faddCount / SPLIT_SIZE));
+                String filename = String.format("fadd.%d", faddCount / SPLIT_SIZE);
+                faddOut = new BinWriter(new BufferedOutputStream(new FileOutputStream(filename)));
             }
             faddCount++;
-            faddOut.printf("0x%08x 0x%08x 0x%08x%n",
-                Float.floatToRawIntBits(a), Float.floatToRawIntBits(b), Float.floatToRawIntBits(r));
+            faddOut.writeFloat(a);
+            faddOut.writeFloat(b);
+            faddOut.writeFloat(r);
         }
 
         return r;
@@ -60,11 +77,13 @@ class FPU {
                 if (splitCount > SPLIT_LIMIT) {
                     return r;
                 }
-                fsubOut = new PrintWriter(String.format("fsub.%d", fsubCount / SPLIT_SIZE));
+                String filename = String.format("fsub.%d", fsubCount / SPLIT_SIZE);
+                fsubOut = new BinWriter(new BufferedOutputStream(new FileOutputStream(filename)));
             }
             fsubCount++;
-            fsubOut.printf("0x%08x 0x%08x 0x%08x%n",
-                Float.floatToRawIntBits(a), Float.floatToRawIntBits(b), Float.floatToRawIntBits(r));
+            fsubOut.writeFloat(a);
+            fsubOut.writeFloat(b);
+            fsubOut.writeFloat(r);
         }
 
         return r;
@@ -82,11 +101,13 @@ class FPU {
                 if (splitCount > SPLIT_LIMIT) {
                     return r;
                 }
-                fmulOut = new PrintWriter(String.format("fmul.%d", fmulCount / SPLIT_SIZE));
+                String filename = String.format("fmul.%d", fmulCount / SPLIT_SIZE);
+                fmulOut = new BinWriter(new BufferedOutputStream(new FileOutputStream(filename)));
             }
             fmulCount++;
-            fmulOut.printf("0x%08x 0x%08x 0x%08x%n",
-                Float.floatToRawIntBits(a), Float.floatToRawIntBits(b), Float.floatToRawIntBits(r));
+            fmulOut.writeFloat(a);
+            fmulOut.writeFloat(b);
+            fmulOut.writeFloat(r);
         }
 
         return r;
@@ -104,11 +125,13 @@ class FPU {
                 if (splitCount > SPLIT_LIMIT) {
                     return r;
                 }
-                fdivOut = new PrintWriter(String.format("fdiv.%d", fdivCount / SPLIT_SIZE));
+                String filename = String.format("fdiv.%d", fdivCount / SPLIT_SIZE);
+                fdivOut = new BinWriter(new BufferedOutputStream(new FileOutputStream(filename)));
             }
             fdivCount++;
-            fdivOut.printf("0x%08x 0x%08x 0x%08x%n",
-                Float.floatToRawIntBits(a), Float.floatToRawIntBits(b), Float.floatToRawIntBits(r));
+            fdivOut.writeFloat(a);
+            fdivOut.writeFloat(b);
+            fdivOut.writeFloat(r);
         }
 
         return r;
@@ -126,10 +149,12 @@ class FPU {
                 if (splitCount > SPLIT_LIMIT) {
                     return r;
                 }
-                finvOut = new PrintWriter(String.format("finv.%d", finvCount / SPLIT_SIZE));
+                String filename = String.format("finv.%d", finvCount / SPLIT_SIZE);
+                finvOut = new BinWriter(new BufferedOutputStream(new FileOutputStream(filename)));
             }
             finvCount++;
-            finvOut.printf("0x%08x 0x%08x%n", Float.floatToRawIntBits(a), Float.floatToRawIntBits(r));
+            finvOut.writeFloat(a);
+            finvOut.writeFloat(r);
         }
 
         return r;
@@ -147,10 +172,12 @@ class FPU {
                 if (splitCount > SPLIT_LIMIT) {
                     return r;
                 }
-                fsqrtOut = new PrintWriter(String.format("fsqrt.%d", fsqrtCount / SPLIT_SIZE));
+                String filename = String.format("fsqrt.%d", fsqrtCount / SPLIT_SIZE);
+                fsqrtOut = new BinWriter(new BufferedOutputStream(new FileOutputStream(filename)));
             }
             fsqrtCount++;
-            fsqrtOut.printf("0x%08x 0x%08x%n", Float.floatToRawIntBits(a), Float.floatToRawIntBits(r));
+            fsqrtOut.writeFloat(a);
+            fsqrtOut.writeFloat(r);
         }
 
         return r;

@@ -27,8 +27,8 @@ class Simulator(val program:Program, val settings:Settings) {
   private[this] val ra = 31 // return address
 
   private[this] val scanner = new Scanner(System.in)
-  private[this] val binIn = new DataInputStream(System.in)
-  private[this] val buf = new Array[Byte](4)
+  private[this] val binIn = new BinReader(System.in)
+  private[this] val binOut = new BinWriter(System.out)
 
   private[this] val fpu = new FPU(dumpFops)
 
@@ -140,10 +140,10 @@ class Simulator(val program:Program, val settings:Settings) {
       case Fcle(rd, fs, ft) => r(rd) = if (f(fs) <= f(ft)) 1 else 0
       // IO format
       case Iw(rd) => r(rd) = if (binMode) binIn.readInt() else scanner.nextInt()
-      case Ib(rd) => r(rd) = (if (binMode) binIn.readByte() else scanner.nextByte()).toInt
-      case Ih(rd) => r(rd) = (if (binMode) binIn.readShort() else scanner.nextShort()).toInt
+      // case Ib(rd) => r(rd) = (if (binMode) binIn.readByte() else scanner.nextByte()).toInt
+      // case Ih(rd) => r(rd) = (if (binMode) binIn.readShort() else scanner.nextShort()).toInt
       // case Ow(rs) =>
-      case Ob(rs) => buf(0) = r(rs).toByte; Console.out.write(buf, 0, 1)
+      case Ob(rs) => binOut.writeByte(r(rs).toByte)
       // case Oh(rs) =>
       case Iwf(fd) => f(fd) = if (binMode) binIn.readFloat() else scanner.nextFloat()
       // case Owf(fs) =>
